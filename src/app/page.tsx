@@ -1,5 +1,6 @@
 import styles from './page.module.css';
 import Link from 'next/link';
+import { NewsList } from '@/components/NewsList';
 
 export default function Home() {
   return (
@@ -36,10 +37,15 @@ export default function Home() {
           운전 모드 시작하기
         </Link>
         
-        <Link href="/news" className={styles.secondaryButton}>
-          뉴스 목록 보기
+        <Link href="/test-wakeword" className={styles.secondaryButton}>
+          음성 인식 테스트
         </Link>
       </div>
+
+      <section className={styles.newsSection}>
+        <h2 className={styles.sectionTitle}>최신 뉴스</h2>
+        <NewsList />
+      </section>
 
       <div className={styles.info}>
         <p className={styles.notice}>

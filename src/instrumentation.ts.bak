@@ -1,0 +1,12 @@
+export async function register() {
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    // Only run on server
+    const { initializeServices } = await import('./services/server/startup');
+    
+    try {
+      await initializeServices();
+    } catch (error) {
+      console.error('Failed to initialize services during startup:', error);
+    }
+  }
+}

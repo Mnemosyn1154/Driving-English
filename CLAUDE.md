@@ -145,3 +145,65 @@ EOF
 1. **프롬프트 생성**: Claude는 사용자의 요구사항을 명확한 프롬프트로 정리
 2. **Gemini CLI 호출**: 위의 사용법에 따라 적절한 방식으로 호출
 3. **결과 통합**: Gemini의 응답을 분석하여 사용자에게 전달
+
+## News Preprocessing and Caching System
+
+### Database Setup
+- **PostgreSQL** with Prisma ORM for persistent storage
+- **Redis** for high-performance caching
+- Database schemas for:
+  - News sources and articles
+  - Sentences with translations
+  - User data and progress tracking
+  - Background job management
+  - Cache metadata
+
+### Background Processing
+- **Bull** job queue for reliable background processing
+- Job types:
+  - News fetching (every 30 minutes)
+  - Article processing (translation + audio)
+  - Audio pre-generation
+  - Cache cleanup (daily)
+- Worker processes handle jobs concurrently
+- Automatic retry with exponential backoff
+
+### Caching Strategy
+- **Multi-layer caching**:
+  - Redis for hot data (translations, audio URLs)
+  - Database for persistent storage
+  - In-memory caches for ultra-fast access
+- **TTL-based expiration**:
+  - Translations: 7 days
+  - Audio files: 7 days
+  - Article metadata: 3 days
+- **Smart eviction**: LRU for memory, least-accessed for storage
+
+### API Endpoints
+- `GET /api/news/articles` - Paginated article list with filters
+- `GET /api/news/articles/:id` - Single article with sentences
+- `GET /api/news/recommendations` - Personalized recommendations
+- `GET /api/news/statistics` - System statistics
+- `POST /api/news/refresh` - Trigger news update
+- `POST /api/news/process` - Process specific articles
+- `GET /api/jobs/status` - Background job monitoring
+
+### Database Commands
+```bash
+npm run db:generate    # Generate Prisma client
+npm run db:push       # Push schema to database
+npm run db:migrate    # Run migrations
+npm run db:studio     # Open Prisma Studio
+npm run db:seed       # Seed initial data
+npm run worker        # Start background worker
+```
+
+### Environment Variables
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/driving_english"
+REDIS_URL="redis://localhost:6379"
+NEWS_API_KEY="your-api-key"
+GOOGLE_APPLICATION_CREDENTIALS="path/to/credentials.json"
+GEMINI_API_KEY="your-gemini-key"
+JWT_SECRET="your-secret-key"
+```

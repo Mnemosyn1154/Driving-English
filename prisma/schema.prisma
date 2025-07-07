@@ -1,0 +1,203 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// News source configuration
+model NewsSource {
+  id            String    @id @default(uuid())
+  name          String    @unique
+  type          String    // RSS or API
+  url           String
+  category      String
+  updateInterval Int      // minutes
+  lastFetch     DateTime?
+  enabled       Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  articles      Article[]
+}
+
+// News articles
+model Article {
+  id               String    @id @default(uuid())
+  sourceId         String
+  title            String
+  titleKo          String?   // Korean translation
+  summary          String    @db.Text
+  summaryKo        String?   @db.Text // Korean translation
+  content          String    @db.Text
+  url              String    @unique
+  imageUrl         String?
+  publishedAt      DateTime
+  difficulty       Int       // 1-5
+  wordCount        Int
+  readingTime      Int       // seconds
+  category         String
+  tags             String[]
+  
+  // Processing status
+  isProcessed      Boolean   @default(false)
+  processedAt      DateTime?
+  processingError  String?
+  
+  // Audio files
+  audioUrlEn       String?   // English audio URL
+  audioUrlKo       String?   // Korean audio URL
+  audioDuration    Int?      // seconds
+  
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  
+  source           NewsSource @relation(fields: [sourceId], references: [id])
+  sentences        Sentence[]
+  userProgress     UserProgress[]
+  
+  @@index([publishedAt])
+  @@index([difficulty])
+  @@index([category])
+  @@index([isProcessed])
+}
+
+// Individual sentences for line-by-line translation
+model Sentence {
+  id            String    @id @default(uuid())
+  articleId     String
+  order         Int       // Sentence order in article
+  text          String    @db.Text
+  translation   String?   @db.Text
+  audioUrlEn    String?   // Individual sentence audio
+  audioUrlKo    String?   // Individual sentence audio (Korean)
+  difficulty    Int       // 1-5
+  wordCount     Int
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  article       Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  
+  @@unique([articleId, order])
+  @@index([articleId])
+}
+
+// User data
+model User {
+  id                String    @id @default(uuid())
+  email             String?   @unique
+  name              String?
+  deviceId          String    @unique // For anonymous users
+  preferredLevel    Int       @default(3) // 1-5
+  dailyGoal         Int       @default(3) // Articles per day
+  studyTime         Int       @default(0) // Total minutes
+  lastActiveAt      DateTime?
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  progress          UserProgress[]
+  preferences       UserPreference[]
+  sessions          StudySession[]
+}
+
+// User progress tracking
+model UserProgress {
+  id               String    @id @default(uuid())
+  userId           String
+  articleId        String
+  completedSentences Int[]   // Array of completed sentence orders
+  isCompleted      Boolean   @default(false)
+  startedAt        DateTime  @default(now())
+  completedAt      DateTime?
+  studyTime        Int       @default(0) // seconds
+  
+  user             User      @relation(fields: [userId], references: [id])
+  article          Article   @relation(fields: [articleId], references: [id])
+  
+  @@unique([userId, articleId])
+  @@index([userId])
+  @@index([articleId])
+}
+
+// User preferences
+model UserPreference {
+  id            String    @id @default(uuid())
+  userId        String
+  key           String
+  value         String
+  
+  user          User      @relation(fields: [userId], references: [id])
+  
+  @@unique([userId, key])
+}
+
+// Study sessions for analytics
+model StudySession {
+  id            String    @id @default(uuid())
+  userId        String
+  startedAt     DateTime  @default(now())
+  endedAt       DateTime?
+  duration      Int?      // seconds
+  articlesRead  Int       @default(0)
+  sentencesRead Int       @default(0)
+  
+  user          User      @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([startedAt])
+}
+
+// Background job tracking
+model BackgroundJob {
+  id            String    @id @default(uuid())
+  type          String    // FETCH_NEWS, PROCESS_ARTICLE, CLEANUP_CACHE
+  status        String    // PENDING, RUNNING, SUCCESS, FAILED
+  payload       Json?
+  error         String?
+  attempts      Int       @default(0)
+  maxAttempts   Int       @default(3)
+  scheduledFor  DateTime
+  startedAt     DateTime?
+  completedAt   DateTime?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@index([type, status])
+  @@index([scheduledFor])
+}
+
+// Cache metadata for tracking
+model CacheEntry {
+  id            String    @id @default(uuid())
+  key           String    @unique
+  type          String    // TRANSLATION, AUDIO, NEWS
+  size          Int       // bytes
+  hits          Int       @default(0)
+  lastAccessed  DateTime  @default(now())
+  expiresAt     DateTime
+  
+  createdAt     DateTime  @default(now())
+  
+  @@index([type])
+  @@index([expiresAt])
+}
+
+// Simple key-value cache for Supabase (Redis alternative)
+model Cache {
+  id            String    @id @default(uuid())
+  key           String    @unique
+  value         Json
+  expires_at    DateTime
+  updated_at    DateTime  @updatedAt
+  
+  @@index([expires_at])
+  @@map("cache")
+}

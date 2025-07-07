@@ -40,6 +40,8 @@ next-env.d.ts
 # service account keys
 *-service-account-key.json
 *.key.json
+credentials/
+/credentials
 
 # IDE
 .idea

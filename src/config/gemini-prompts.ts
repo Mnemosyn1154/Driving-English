@@ -194,7 +194,7 @@ export function buildTranslationPrompt(
 
 // Gemini API configuration
 export const GEMINI_CONFIG = {
-  defaultModel: 'gemini-pro',
+  defaultModel: 'gemini-1.5-flash',
   translation: {
     temperature: 0.3, // Lower for more consistent translations
     maxOutputTokens: 4096,

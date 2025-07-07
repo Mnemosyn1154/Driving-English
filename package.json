@@ -10,7 +10,13 @@
     "type-check": "tsc --noEmit",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "db:seed": "tsx scripts/seed-database.ts",
+    "worker": "tsx src/services/server/jobs/worker.ts"
   },
   "keywords": [],
   "author": "",
@@ -19,12 +25,20 @@
   "dependencies": {
     "@google-cloud/speech": "^7.1.0",
     "@google-cloud/text-to-speech": "^6.1.0",
+    "@google/generative-ai": "^0.24.1",
+    "@prisma/client": "^6.11.1",
+    "@supabase/supabase-js": "^2.50.3",
+    "@tailwindcss/postcss": "^4.1.11",
+    "@types/bull": "^3.15.9",
     "@types/node-fetch": "^2.6.12",
+    "bull": "^4.16.5",
     "jsonwebtoken": "^9.0.2",
     "next": "^15.3.5",
     "node-fetch": "^3.3.2",
+    "prisma": "^6.11.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "redis": "^5.5.6",
     "rss-parser": "^3.13.0",
     "uuid": "^11.1.0",
     "ws": "^8.18.3"
@@ -40,11 +54,13 @@
     "@types/uuid": "^10.0.0",
     "@types/ws": "^8.18.1",
     "autoprefixer": "^10.4.21",
+    "dotenv-cli": "^8.0.0",
     "jest": "^30.0.4",
     "jest-environment-jsdom": "^30.0.4",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.11",
     "ts-jest": "^29.4.0",
+    "tsx": "^4.20.3",
     "typescript": "^5.8.3"
   }
 }
