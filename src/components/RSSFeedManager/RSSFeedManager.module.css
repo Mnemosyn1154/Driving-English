@@ -1,0 +1,238 @@
+.container {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.container h3 {
+  margin: 0 0 24px 0;
+  color: #333;
+  font-size: 20px;
+}
+
+.addFeed {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.addFeed input {
+  flex: 1;
+  padding: 12px 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.addFeed input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.addFeed button {
+  padding: 12px 24px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.addFeed button:hover:not(:disabled) {
+  background: #5a67d8;
+  transform: translateY(-1px);
+}
+
+.addFeed button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.message {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  background: #f0f9ff;
+  color: #1e40af;
+  border: 1px solid #bae6fd;
+}
+
+.feedListHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.feedListHeader h4 {
+  margin: 0;
+  font-size: 16px;
+  color: #333;
+}
+
+.updateAllButton {
+  padding: 8px 16px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.updateAllButton:hover:not(:disabled) {
+  background: #5a67d8;
+  transform: translateY(-1px);
+}
+
+.updateAllButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.feedList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.empty {
+  text-align: center;
+  color: #999;
+  padding: 40px 20px;
+  background: #f8f8f8;
+  border-radius: 8px;
+}
+
+.feedItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: #f8f8f8;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.feedItem:hover {
+  background: #f0f0f0;
+  border-color: #d0d0d0;
+}
+
+.feedInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.feedInfo h4 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  color: #333;
+}
+
+.feedInfo p {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  color: #666;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.date {
+  font-size: 12px;
+  color: #999;
+}
+
+.feedActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.toggle input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.toggle span {
+  font-size: 14px;
+  color: #666;
+}
+
+.deleteButton {
+  padding: 6px 12px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.deleteButton:hover {
+  background: #dc2626;
+}
+
+.samples {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.samples h4 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  color: #666;
+}
+
+.samples ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.samples li {
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #666;
+  font-family: monospace;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 16px;
+  }
+  
+  .addFeed {
+    flex-direction: column;
+  }
+  
+  .feedItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .feedActions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

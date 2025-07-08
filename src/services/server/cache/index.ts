@@ -1,8 +1,8 @@
 // 통합 캐시 인터페이스
 // 환경 설정에 따라 Redis, Supabase 또는 메모리 캐시 사용
 
-const USE_MEMORY_CACHE = process.env.USE_MEMORY_CACHE === 'true' || process.env.NODE_ENV === 'development';
-const USE_SUPABASE_CACHE = !USE_MEMORY_CACHE && (!process.env.REDIS_URL || process.env.USE_SUPABASE_CACHE === 'true');
+const USE_MEMORY_CACHE = process.env.USE_MEMORY_CACHE === 'true';
+const USE_SUPABASE_CACHE = !USE_MEMORY_CACHE && (process.env.USE_SUPABASE_CACHE === 'true' || !process.env.REDIS_URL);
 
 // Dynamic import based on configuration
 let cacheModule: any;

@@ -2,6 +2,7 @@
 
 import styles from './page.module.css';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { NewsList } from '@/components/NewsList';
 import { AuthModal } from '@/components/Auth/AuthModal';
 import { NewsSelector } from '@/components/NewsSelector/NewsSelector';
@@ -10,6 +11,7 @@ import { useState, useEffect } from 'react';
 
 export default function Home() {
   const { user, loading, signOut } = useAuth();
+  const router = useRouter();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showNewsSelector, setShowNewsSelector] = useState(false);
   const [deviceId, setDeviceId] = useState<string | null>(null);
@@ -50,6 +52,23 @@ export default function Home() {
         <p className={styles.subtitle}>
           운전하며 배우는 AI 영어 뉴스 서비스
         </p>
+        <div className={styles.ctaSection}>
+          <button
+            className={styles.ctaButton}
+            onClick={() => {
+              if (user || localStorage.getItem('skipAuth') === 'true') {
+                router.push('/dashboard');
+              } else {
+                setShowAuthModal(true);
+              }
+            }}
+          >
+            🚀 시작하기
+          </button>
+          <p className={styles.ctaText}>
+            로그인 후 개인화된 학습 경험을 시작하세요
+          </p>
+        </div>
       </div>
 
       <div className={styles.features}>
@@ -73,9 +92,18 @@ export default function Home() {
       </div>
 
       <div className={styles.actions}>
-        <Link href="/driving" className={styles.primaryButton}>
-          운전 모드 시작하기
-        </Link>
+        <button 
+          className={styles.primaryButton}
+          onClick={() => {
+            if (user || localStorage.getItem('skipAuth') === 'true') {
+              router.push('/learn');
+            } else {
+              setShowAuthModal(true);
+            }
+          }}
+        >
+          학습 시작하기
+        </button>
         
         <Link href="/test-wakeword" className={styles.secondaryButton}>
           음성 인식 테스트
@@ -107,7 +135,7 @@ export default function Home() {
         onClose={() => setShowAuthModal(false)}
         onSuccess={() => {
           setShowAuthModal(false);
-          // 로그인 성공 후 추가 처리 가능
+          router.push('/dashboard');
         }}
       />
 

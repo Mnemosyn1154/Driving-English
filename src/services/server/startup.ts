@@ -37,14 +37,21 @@ export async function initializeServices() {
     }
     console.log('✓ Supabase connected');
 
-    // Test Redis connection (optional - falls back to Supabase cache)
-    try {
-      const redisClient = await getRedisClient();
-      if (redisClient) {
-        console.log('✓ Redis connected');
+    // Test cache connection based on configuration
+    const useSupabaseCache = process.env.USE_SUPABASE_CACHE === 'true';
+    
+    if (useSupabaseCache) {
+      console.log('✓ Using Supabase cache (USE_SUPABASE_CACHE=true)');
+    } else {
+      // Test Redis connection only if not using Supabase cache
+      try {
+        const redisClient = await getRedisClient();
+        if (redisClient) {
+          console.log('✓ Redis connected');
+        }
+      } catch (error) {
+        console.log('ℹ️  Redis not available, falling back to Supabase cache');
       }
-    } catch (error) {
-      console.log('ℹ️  Redis not available, using Supabase cache');
     }
 
     // Schedule recurring jobs

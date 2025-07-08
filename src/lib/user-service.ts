@@ -68,19 +68,17 @@ export const userService = {
 
   // 사용자 선호도 업데이트
   async updatePreferences(userId: string, preferences: {
-    preferredLevel?: number;
     dailyGoal?: number;
     categories?: string[];
   }) {
-    const { preferredLevel, dailyGoal, categories } = preferences;
+    const { dailyGoal, categories } = preferences;
 
     // 사용자 기본 정보 업데이트
-    if (preferredLevel !== undefined || dailyGoal !== undefined) {
+    if (dailyGoal !== undefined) {
       await prisma.user.update({
         where: { id: userId },
         data: {
-          ...(preferredLevel !== undefined && { preferredLevel }),
-          ...(dailyGoal !== undefined && { dailyGoal })
+          dailyGoal
         }
       });
     }
