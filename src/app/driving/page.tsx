@@ -1,11 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { DrivingModeLayout } from '@/components/DrivingMode/DrivingModeLayout';
-import { VoiceControl } from '@/components/DrivingMode/VoiceControl';
-import { MinimalNewsDisplay } from '@/components/DrivingMode/MinimalNewsDisplay';
-import { WakeWordIndicator } from '@/components/DrivingMode/WakeWordIndicator';
-import { useWakeWord } from '@/hooks/useWakeWord';
+import { DrivingChatInterface } from '@/components/DrivingMode/DrivingChatInterface';
 import { useRouter } from 'next/navigation';
 import styles from './page.module.css';
 
@@ -43,38 +39,11 @@ const mockArticle = {
 
 export default function DrivingModePage() {
   const router = useRouter();
-  const [isDrivingMode, setIsDrivingMode] = useState(true);
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [lastCommand, setLastCommand] = useState<string | null>(null);
-  const [lastTranscript, setLastTranscript] = useState<string | null>(null);
-  const [voiceControlActive, setVoiceControlActive] = useState(false);
-
-  // Wake word detection
-  const {
-    isListening: isWakeWordListening,
-    lastDetection,
-    start: startWakeWord,
-    stop: stopWakeWord,
-    error: wakeWordError,
-  } = useWakeWord({
-    autoStart: true,
-    onDetected: (event) => {
-      console.log('Wake word detected:', event.data);
-      // Activate voice control when wake word is detected
-      setVoiceControlActive(true);
-      
-      // Auto-deactivate after 10 seconds of no activity
-      setTimeout(() => {
-        setVoiceControlActive(false);
-      }, 10000);
-    },
-  });
 
   // Handle voice commands
   const handleCommand = useCallback((command: string) => {
-    setLastCommand(command);
-    
     switch (command) {
       case 'next':
         if (currentSentenceIndex < mockArticle.sentences.length - 1) {
@@ -101,11 +70,6 @@ export default function DrivingModePage() {
         break;
     }
   }, [currentSentenceIndex, router]);
-
-  // Handle transcript updates
-  const handleTranscript = useCallback((transcript: string) => {
-    setLastTranscript(transcript);
-  }, []);
 
   // Auto-play functionality
   useEffect(() => {
@@ -147,48 +111,23 @@ export default function DrivingModePage() {
   }, [handleCommand, isPlaying]);
 
   return (
-    <DrivingModeLayout isDrivingMode={isDrivingMode}>
-      <div className={styles.container}>
-        {/* Wake word indicator */}
-        <WakeWordIndicator
-          isListening={isWakeWordListening}
-          lastDetection={lastDetection}
-          error={wakeWordError}
-        />
-
-        {/* Main news display */}
-        <MinimalNewsDisplay
-          title={mockArticle.title}
-          sentences={mockArticle.sentences}
-          currentSentenceIndex={currentSentenceIndex}
-          isPlaying={isPlaying}
-          onSentenceChange={setCurrentSentenceIndex}
-        />
-
-        {/* Voice control - activated by wake word or manual tap */}
-        <VoiceControl
-          isActive={voiceControlActive || isDrivingMode}
-          onCommand={handleCommand}
-          onTranscript={handleTranscript}
-        />
-
-        {/* Debug info (remove in production) */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className={styles.debugInfo}>
-            <p>Last command: {lastCommand}</p>
-            <p>Last transcript: {lastTranscript}</p>
-          </div>
-        )}
-
-        {/* Exit button */}
-        <button
-          className={styles.exitButton}
-          onClick={() => router.push('/')}
-          aria-label="운전 모드 종료"
-        >
-          ✕
-        </button>
-      </div>
-    </DrivingModeLayout>
+    <div className={styles.container}>
+      <DrivingChatInterface
+        currentSentence={mockArticle.sentences[currentSentenceIndex]}
+        onCommand={handleCommand}
+        isPlaying={isPlaying}
+      />
+      
+      {/* Exit button */}
+      <button
+        className={styles.exitButton}
+        onClick={() => router.push('/')}
+        aria-label="운전 모드 종료"
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+        </svg>
+      </button>
+    </div>
   );
 }

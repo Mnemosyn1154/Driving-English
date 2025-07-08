@@ -17,18 +17,24 @@ interface Article {
 
 interface NewsListProps {
   category?: string;
+  initialArticles?: Article[];
 }
 
-export function NewsList({ category }: NewsListProps) {
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [loading, setLoading] = useState(true);
+export function NewsList({ category, initialArticles = [] }: NewsListProps) {
+  const [articles, setArticles] = useState<Article[]>(initialArticles);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
 
+  // 초기 데이터가 있으면 클라이언트 측 로딩을 하지 않음
+  const shouldLoadOnClient = initialArticles.length === 0;
+
   useEffect(() => {
-    fetchArticles();
-  }, [page, category]);
+    if (shouldLoadOnClient) {
+      fetchArticles();
+    }
+  }, [page, category, shouldLoadOnClient]);
 
   async function fetchArticles() {
     try {
@@ -74,6 +80,7 @@ export function NewsList({ category }: NewsListProps) {
     return labels[category] || category;
   };
 
+  // 초기 데이터가 없고 로딩 중일 때만 로딩 표시
   if (loading && articles.length === 0) {
     return <div className={styles.loading}>뉴스를 불러오는 중...</div>;
   }
@@ -117,7 +124,7 @@ export function NewsList({ category }: NewsListProps) {
             <div className={styles.metadata}>
               <span>{article.wordCount} 단어</span>
               <span>•</span>
-              <span>{new Date(article.publishedAt).toLocaleDateString('ko-KR')}</span>
+              <span suppressHydrationWarning>{new Date(article.publishedAt).toLocaleDateString('ko-KR')}</span>
             </div>
           </Link>
         ))}

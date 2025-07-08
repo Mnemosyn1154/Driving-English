@@ -136,12 +136,23 @@ export class WakeWordDetector {
     };
 
     this.recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      console.error('Speech recognition error:', event.error);
-      this.emit('error', { error: event.error });
+      // Only log non-aborted errors
+      if (event.error !== 'aborted') {
+        console.error('Speech recognition error:', event.error);
+        this.emit('error', { error: event.error });
+      }
       
       // Restart on recoverable errors
-      if (event.error === 'no-speech' || event.error === 'audio-capture') {
-        setTimeout(() => this.start(), 1000);
+      if (event.error === 'no-speech' || event.error === 'audio-capture' || event.error === 'aborted') {
+        if (this.isListening && this.config.continuous) {
+          setTimeout(() => {
+            if (this.isListening) {
+              this.start().catch(() => {
+                // Ignore restart errors
+              });
+            }
+          }, 1000);
+        }
       }
     };
 

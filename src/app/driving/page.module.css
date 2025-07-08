@@ -3,34 +3,41 @@
   height: 100vh;
   position: relative;
   overflow: hidden;
+  background: #000;
 }
 
 .exitButton {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.1);
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  color: #fff;
-  font-size: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: fixed;
+  top: 16px;
+  right: 70px;
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  color: white;
   cursor: pointer;
   transition: all 0.3s ease;
   z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
 }
 
 .exitButton:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 59, 48, 0.9);
+  border-color: rgba(255, 59, 48, 0.5);
+  transform: scale(1.1);
 }
 
 .exitButton:active {
-  transform: scale(0.9);
+  transform: scale(0.95);
+}
+
+.exitButton svg {
+  width: 24px;
+  height: 24px;
 }
 
 .debugInfo {
@@ -52,7 +59,8 @@
 
 /* Safety mode indicators */
 @media (prefers-reduced-motion: reduce) {
-  * {
+  .container,
+  .container * {
     animation: none !important;
     transition: none !important;
   }

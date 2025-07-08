@@ -2,7 +2,28 @@ import styles from './page.module.css';
 import Link from 'next/link';
 import { NewsList } from '@/components/NewsList';
 
-export default function Home() {
+// 서버에서 데이터를 가져오는 함수
+async function getArticles() {
+  try {
+    // 실제 API 엔드포인트로 변경 필요
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/news/articles?limit=10`, {
+      cache: 'no-store' // 항상 최신 데이터를 가져오도록 설정
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch articles');
+    }
+    
+    const data = await response.json();
+    return data.articles || [];
+  } catch (error) {
+    console.error('Error fetching articles:', error);
+    return [];
+  }
+}
+
+export default async function Home() {
+  const articles = await getArticles();
   return (
     <main className={styles.main}>
       <div className={styles.hero}>
@@ -44,7 +65,7 @@ export default function Home() {
 
       <section className={styles.newsSection}>
         <h2 className={styles.sectionTitle}>최신 뉴스</h2>
-        <NewsList />
+        <NewsList initialArticles={articles} />
       </section>
 
       <div className={styles.info}>
