@@ -41,14 +41,54 @@ export const NewsSelector: React.FC<NewsSelectorProps> = ({ onClose }) => {
   const [feedMessage, setFeedMessage] = useState('');
 
   const categories = [
-    { id: 'technology', name: '기술', emoji: '💻' },
-    { id: 'business', name: '비즈니스', emoji: '💼' },
-    { id: 'science', name: '과학', emoji: '🔬' },
-    { id: 'health', name: '건강', emoji: '🏥' },
-    { id: 'sports', name: '스포츠', emoji: '⚽' },
-    { id: 'entertainment', name: '엔터테인먼트', emoji: '🎬' },
-    { id: 'world', name: '국제', emoji: '🌍' },
-    { id: 'politics', name: '정치', emoji: '🏛️' },
+    { 
+      id: 'technology', 
+      name: '기술', 
+      emoji: '💻',
+      examples: 'TechCrunch, The Verge, Wired'
+    },
+    { 
+      id: 'business', 
+      name: '비즈니스', 
+      emoji: '💼',
+      examples: 'Bloomberg, Financial Times, WSJ'
+    },
+    { 
+      id: 'science', 
+      name: '과학', 
+      emoji: '🔬',
+      examples: 'Science Daily, Nature News, New Scientist'
+    },
+    { 
+      id: 'health', 
+      name: '건강', 
+      emoji: '🏥',
+      examples: 'Health News, Medical News Today'
+    },
+    { 
+      id: 'sports', 
+      name: '스포츠', 
+      emoji: '⚽',
+      examples: 'ESPN, BBC Sport, The Athletic'
+    },
+    { 
+      id: 'entertainment', 
+      name: '엔터테인먼트', 
+      emoji: '🎬',
+      examples: 'Variety, Hollywood Reporter, Entertainment Weekly'
+    },
+    { 
+      id: 'world', 
+      name: '국제', 
+      emoji: '🌍',
+      examples: 'BBC News, Reuters, Al Jazeera'
+    },
+    { 
+      id: 'politics', 
+      name: '정치', 
+      emoji: '🏛️',
+      examples: 'Politico, The Hill, Foreign Policy'
+    },
   ];
 
   // RSS 카테고리별 선택 상태
@@ -380,15 +420,29 @@ export const NewsSelector: React.FC<NewsSelectorProps> = ({ onClose }) => {
           <section className={styles.section}>
             <h3>관심 카테고리</h3>
             <p className={styles.description}>선호하는 뉴스 카테고리를 선택하세요</p>
+            
+            {/* 카테고리 선택의 이점 설명 */}
+            <div className={styles.benefitsBox}>
+              <h4>🎯 카테고리를 선택하면...</h4>
+              <ul className={styles.benefitsList}>
+                <li>음성 검색 시 관련 뉴스가 우선 표시됩니다</li>
+                <li>선택한 분야의 고품질 RSS 피드를 추천받을 수 있습니다</li>
+                <li>대시보드에서 맞춤형 뉴스를 자동으로 큐레이션합니다</li>
+                <li>관심 분야의 전문 용어와 표현을 집중적으로 학습할 수 있습니다</li>
+              </ul>
+            </div>
+            
             <div className={styles.categoryGrid}>
               {categories.map(category => (
                 <button
                   key={category.id}
                   className={`${styles.categoryCard} ${selectedCategories.includes(category.id) ? styles.selected : ''}`}
                   onClick={() => toggleCategory(category.id)}
+                  title={`예시: ${category.examples}`}
                 >
                   <span className={styles.emoji}>{category.emoji}</span>
                   <span className={styles.name}>{category.name}</span>
+                  <span className={styles.tooltip}>📰 {category.examples}</span>
                 </button>
               ))}
             </div>

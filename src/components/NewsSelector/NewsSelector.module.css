@@ -102,6 +102,43 @@
   margin-bottom: 20px;
 }
 
+/* 카테고리 선택의 이점 설명 */
+.benefitsBox {
+  background: #f0f4ff;
+  border: 1px solid #667eea;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.benefitsBox h4 {
+  margin: 0 0 12px 0;
+  color: #667eea;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.benefitsList {
+  margin: 0;
+  padding: 0 0 0 20px;
+  list-style: none;
+}
+
+.benefitsList li {
+  position: relative;
+  margin-bottom: 8px;
+  color: #555;
+  line-height: 1.5;
+}
+
+.benefitsList li:before {
+  content: '✓';
+  position: absolute;
+  left: -20px;
+  color: #667eea;
+  font-weight: bold;
+}
+
 /* 카테고리 그리드 */
 .categoryGrid {
   display: grid;
@@ -120,6 +157,8 @@
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  position: relative;
+  overflow: hidden;
 }
 
 .categoryCard:hover {
@@ -137,6 +176,26 @@
 .categoryCard.selected:hover {
   background: #5a67d8;
   border-color: #5a67d8;
+}
+
+.categoryCard .tooltip {
+  position: absolute;
+  bottom: -30px;
+  left: 0;
+  right: 0;
+  background: #333;
+  color: white;
+  font-size: 11px;
+  padding: 4px 8px;
+  text-align: center;
+  transition: bottom 0.3s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.categoryCard:hover .tooltip {
+  bottom: 0;
 }
 
 .emoji {

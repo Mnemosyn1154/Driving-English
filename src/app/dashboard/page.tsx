@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { Header } from '@/components/Layout/Header/Header';
@@ -10,16 +10,29 @@ import { RecentArticles } from '@/components/Dashboard/RecentArticles/RecentArti
 import { TodayRecommendations } from '@/components/Dashboard/TodayRecommendations/TodayRecommendations';
 import { LearningGoals } from '@/components/Dashboard/LearningGoals/LearningGoals';
 import { QuickSettings } from '@/components/Dashboard/QuickSettings/QuickSettings';
+import { PersonalizationStatus } from '@/components/Dashboard/PersonalizationStatus/PersonalizationStatus';
+import { OnboardingModal } from '@/components/Onboarding/OnboardingModal';
 import styles from './dashboard.module.css';
 
 export default function DashboardPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     // 로그인하지 않은 경우 홈으로 리다이렉트
     if (!loading && !user && localStorage.getItem('skipAuth') !== 'true') {
       router.push('/');
+    }
+    
+    // 첫 사용자인지 확인
+    if (!loading && (user || localStorage.getItem('skipAuth') === 'true')) {
+      const onboardingCompleted = localStorage.getItem('onboardingCompleted');
+      const hasCategories = localStorage.getItem('newsPreferences');
+      
+      if (!onboardingCompleted && !hasCategories) {
+        setShowOnboarding(true);
+      }
     }
   }, [user, loading, router]);
 
@@ -54,6 +67,7 @@ export default function DashboardPage() {
       <div className={styles.grid}>
         {/* 왼쪽 열 */}
         <div className={styles.leftColumn}>
+          <PersonalizationStatus />
           <LearningStats />
           <RecentArticles />
         </div>
@@ -71,6 +85,12 @@ export default function DashboardPage() {
         </div>
         </div>
       </div>
+      
+      {/* 온보딩 모달 */}
+      <OnboardingModal 
+        isOpen={showOnboarding} 
+        onClose={() => setShowOnboarding(false)}
+      />
     </>
   );
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { NewsAPISearchService } from '@/services/server/news/newsApiSearch';
 import { NewsService } from '@/services/server/news/newsService';
 import { prisma } from '@/services/server/database/prisma';
+import { userService } from '@/lib/user-service';
 
 // Gemini를 사용한 키워드 추출 (간단한 구현)
 async function extractKeywords(transcript: string): Promise<string[]> {
@@ -54,9 +55,122 @@ async function saveUserKeywords(userId: string, keywords: string[]) {
   }
 }
 
+// 사용자 RSS 피드에서 기사 검색
+async function searchUserRSSFeeds(userId: string, keywords: string[]) {
+  try {
+    // 사용자의 활성화된 RSS 피드 가져오기
+    const userFeeds = await prisma.userRssFeed.findMany({
+      where: { userId, enabled: true },
+      select: { url: true, category: true }
+    });
+    
+    if (userFeeds.length === 0) return [];
+    
+    // RSS 피드 URL 목록
+    const feedUrls = userFeeds.map(f => f.url);
+    
+    // 해당 피드들의 기사 검색
+    const articles = await prisma.article.findMany({
+      where: {
+        source: {
+          url: { in: feedUrls }
+        },
+        OR: keywords.map(keyword => ({
+          OR: [
+            { title: { contains: keyword, mode: 'insensitive' } },
+            { summary: { contains: keyword, mode: 'insensitive' } },
+            { content: { contains: keyword, mode: 'insensitive' } }
+          ]
+        }))
+      },
+      include: {
+        source: true
+      },
+      take: 20,
+      orderBy: { publishedAt: 'desc' }
+    });
+    
+    return articles;
+  } catch (error) {
+    console.error('Error searching user RSS feeds:', error);
+    return [];
+  }
+}
+
+// 사용자 선호도 기반 점수 계산
+async function calculatePersonalizedScore(
+  article: any,
+  keywords: string[],
+  userId?: string
+): Promise<number> {
+  let score = 0;
+  
+  // 기본 키워드 매칭 점수
+  keywords.forEach(keyword => {
+    const lowerKeyword = keyword.toLowerCase();
+    if (article.title?.toLowerCase().includes(lowerKeyword)) {
+      score += 3; // 제목 매칭은 높은 점수
+    }
+    if (article.summary?.toLowerCase().includes(lowerKeyword)) {
+      score += 2;
+    }
+    if (article.content?.toLowerCase().includes(lowerKeyword)) {
+      score += 1;
+    }
+  });
+  
+  // 사용자 선호도 점수
+  if (userId) {
+    try {
+      // 사용자 키워드 가중치 적용
+      const userKeywords = await prisma.userKeyword.findMany({
+        where: { userId },
+        select: { keyword: true, weight: true }
+      });
+      
+      userKeywords.forEach(uk => {
+        if (article.title?.toLowerCase().includes(uk.keyword.toLowerCase())) {
+          score += uk.weight * 2;
+        }
+        if (article.summary?.toLowerCase().includes(uk.keyword.toLowerCase())) {
+          score += uk.weight;
+        }
+      });
+      
+      // 사용자 선호 카테고리 확인
+      const userPrefs = await prisma.userPreference.findFirst({
+        where: { userId, key: 'categories' }
+      });
+      
+      if (userPrefs) {
+        const preferredCategories = JSON.parse(userPrefs.value);
+        if (preferredCategories.includes(article.category)) {
+          score += 2; // 선호 카테고리 가산점
+        }
+      }
+      
+      // RSS 피드 소스 가산점 (사용자가 구독한 피드)
+      if (article.isFromUserFeed) {
+        score += 3;
+      }
+    } catch (error) {
+      console.error('Error calculating personalized score:', error);
+    }
+  }
+  
+  // 최신성 점수
+  const publishedDate = new Date(article.publishedAt);
+  const daysSincePublished = (Date.now() - publishedDate.getTime()) / (1000 * 60 * 60 * 24);
+  if (daysSincePublished < 1) score += 3;
+  else if (daysSincePublished < 3) score += 2;
+  else if (daysSincePublished < 7) score += 1;
+  
+  return score;
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { transcript, userId } = await request.json();
+    const { transcript, userId, deviceId } = await request.json();
     
     if (!transcript) {
       return NextResponse.json(
@@ -69,13 +183,33 @@ export async function POST(request: NextRequest) {
     const keywords = await extractKeywords(transcript);
     console.log('Extracted keywords:', keywords);
     
-    // 2. 사용자 키워드 저장 (userId가 있는 경우)
-    if (userId) {
-      await saveUserKeywords(userId, keywords);
+    // 2. 사용자 확인 (deviceId로도 가능)
+    let dbUserId = userId;
+    if (!dbUserId && deviceId) {
+      try {
+        const user = await userService.ensureUser(null, deviceId);
+        dbUserId = user.id;
+      } catch (error) {
+        console.error('Error getting user by deviceId:', error);
+      }
     }
     
-    // 3. 병렬로 검색 수행
+    // 3. 사용자 키워드 저장
+    if (dbUserId) {
+      await saveUserKeywords(dbUserId, keywords);
+    }
+    
+    // 4. 병렬로 검색 수행
     const searchPromises = [];
+    
+    // 사용자 RSS 피드 검색 (최우선)
+    if (dbUserId && keywords.length > 0) {
+      searchPromises.push(
+        searchUserRSSFeeds(dbUserId, keywords)
+      );
+    } else {
+      searchPromises.push(Promise.resolve([]));
+    }
     
     // News API 검색
     if (keywords.length > 0) {
@@ -89,9 +223,11 @@ export async function POST(request: NextRequest) {
           return { articles: [] };
         })
       );
+    } else {
+      searchPromises.push(Promise.resolve({ articles: [] }));
     }
     
-    // 데이터베이스 검색
+    // 일반 데이터베이스 검색
     const newsService = new NewsService();
     searchPromises.push(
       newsService.getArticles({
@@ -104,18 +240,32 @@ export async function POST(request: NextRequest) {
     );
     
     // 모든 검색 결과 대기
-    const [newsApiResults, dbResults] = await Promise.all(searchPromises);
+    const [userFeedResults, newsApiResults, dbResults] = await Promise.all(searchPromises);
     
-    // 4. 결과 병합 및 중복 제거
+    // 5. 결과 병합 및 중복 제거
     const allArticles = [
+      // 사용자 RSS 피드 기사 (최우선)
+      ...(userFeedResults || []).map(article => ({
+        ...article,
+        source: article.source?.name || 'User RSS Feed',
+        sourceType: 'RSS',
+        isExternal: false,
+        isFromUserFeed: true
+      })),
+      // News API 결과
       ...(newsApiResults?.articles || []).map(article => ({
         ...article,
         source: article.source || 'News API',
-        isExternal: true
+        sourceType: 'API',
+        isExternal: true,
+        isFromUserFeed: false
       })),
+      // 일반 DB 결과
       ...(dbResults?.articles || []).map(article => ({
         ...article,
-        isExternal: false
+        sourceType: 'DB',
+        isExternal: false,
+        isFromUserFeed: false
       }))
     ];
     
@@ -124,28 +274,13 @@ export async function POST(request: NextRequest) {
       new Map(allArticles.map(article => [article.url, article])).values()
     );
     
-    // 5. 관련성 점수 계산 및 정렬
-    const scoredArticles = uniqueArticles.map(article => {
-      let score = 0;
-      
-      // 제목에 키워드 포함 여부
-      keywords.forEach(keyword => {
-        if (article.title.toLowerCase().includes(keyword.toLowerCase())) {
-          score += 2;
-        }
-        if (article.summary?.toLowerCase().includes(keyword.toLowerCase())) {
-          score += 1;
-        }
-      });
-      
-      // 최신 기사 가산점
-      const publishedDate = new Date(article.publishedAt);
-      const daysSincePublished = (Date.now() - publishedDate.getTime()) / (1000 * 60 * 60 * 24);
-      if (daysSincePublished < 1) score += 2;
-      else if (daysSincePublished < 7) score += 1;
-      
-      return { ...article, relevanceScore: score };
-    });
+    // 6. 관련성 점수 계산 및 정렬
+    const scoredArticles = await Promise.all(
+      uniqueArticles.map(async (article) => {
+        const score = await calculatePersonalizedScore(article, keywords, dbUserId);
+        return { ...article, relevanceScore: score };
+      })
+    );
     
     // 점수 기준 정렬
     scoredArticles.sort((a, b) => b.relevanceScore - a.relevanceScore);
@@ -153,13 +288,35 @@ export async function POST(request: NextRequest) {
     // 상위 10개만 반환
     const topArticles = scoredArticles.slice(0, 10);
     
+    // 검색 기록 저장
+    if (dbUserId) {
+      try {
+        await prisma.newsSearch.create({
+          data: {
+            userId: dbUserId,
+            transcript,
+            keywords,
+            resultCount: topArticles.length
+          }
+        });
+      } catch (error) {
+        console.error('Error saving search history:', error);
+      }
+    }
+    
     return NextResponse.json({
       query: transcript,
       keywords,
       totalResults: uniqueArticles.length,
+      userFeedCount: userFeedResults?.length || 0,
       articles: topArticles.map((article, index) => ({
         ...article,
-        selectionNumber: index + 1 // 음성 선택을 위한 번호
+        selectionNumber: index + 1, // 음성 선택을 위한 번호
+        sourceInfo: {
+          type: article.sourceType,
+          name: article.source,
+          isUserSubscribed: article.isFromUserFeed
+        }
       }))
     });
     
