@@ -19,9 +19,11 @@ interface NewsSearchResult {
   title: string;
   summary: string;
   source: string;
-  difficulty: number;
+  difficulty?: number;
   url: string;
   selectionNumber: number;
+  category?: string;
+  publishedAt?: string;
 }
 
 interface DrivingChatInterfaceProps {
@@ -85,63 +87,125 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
 
   // Process command and get response
   const processCommand = async (text: string): Promise<{ response: string; newsResults?: NewsSearchResult[] }> => {
-    const lowerText = text.toLowerCase();
+    const { analyzeCommand, RESPONSE_TEMPLATES } = await import('@/utils/command-patterns');
+    const analysis = analyzeCommand(text);
+    
     let response = '';
     let commandExecuted = '';
     let newsResults: NewsSearchResult[] | undefined = undefined;
 
-    // 뉴스 검색 명령 확인
-    if (lowerText.includes('검색') || lowerText.includes('찾아') || 
-        (lowerText.includes('관련') && lowerText.includes('뉴스'))) {
-      // 음성 검색 API 호출
-      try {
-        const searchResponse = await fetch('/api/news/voice-search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            transcript: text,
-            userId: localStorage.getItem('deviceId') // 임시 사용자 ID
-          })
-        });
-        
-        if (searchResponse.ok) {
-          const data = await searchResponse.json();
-          newsResults = data.articles;
-          response = `"${data.keywords.join(', ')}" 관련 뉴스 ${data.articles.length}개를 찾았습니다. 번호를 말씀해주시면 해당 뉴스를 선택할 수 있습니다.`;
-        } else {
-          response = '뉴스 검색 중 오류가 발생했습니다.';
+    try {
+      switch (analysis.type) {
+        // RSS 피드 특정 검색
+        case 'source_with_count':
+        case 'source_news': {
+          const searchResponse = await fetch('/api/news/rss-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              source: analysis.source,
+              count: analysis.count || 5,
+              userId: localStorage.getItem('userId'),
+              deviceId: localStorage.getItem('deviceId')
+            })
+          });
+          
+          if (searchResponse.ok) {
+            const data = await searchResponse.json();
+            newsResults = data.articles;
+            response = RESPONSE_TEMPLATES.sourceFound(analysis.source!, data.articles.length);
+          } else {
+            const error = await searchResponse.json();
+            response = error.error || RESPONSE_TEMPLATES.error();
+          }
+          break;
         }
-      } catch (error) {
-        console.error('Search error:', error);
-        response = '검색 서비스에 연결할 수 없습니다.';
+
+        // 카테고리별 검색
+        case 'category_with_count':
+        case 'category_recommend': {
+          const searchResponse = await fetch('/api/news/rss-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              category: analysis.category,
+              count: analysis.count || 5,
+              userId: localStorage.getItem('userId'),
+              deviceId: localStorage.getItem('deviceId')
+            })
+          });
+          
+          if (searchResponse.ok) {
+            const data = await searchResponse.json();
+            newsResults = data.articles;
+            response = RESPONSE_TEMPLATES.categoryFound(analysis.category!, data.articles.length);
+          } else {
+            const error = await searchResponse.json();
+            response = error.error || RESPONSE_TEMPLATES.error();
+          }
+          break;
+        }
+
+        // 일반 키워드 검색
+        case 'general_search':
+        case 'natural_request': {
+          const searchResponse = await fetch('/api/news/voice-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              transcript: text,
+              userId: localStorage.getItem('userId'),
+              deviceId: localStorage.getItem('deviceId')
+            })
+          });
+          
+          if (searchResponse.ok) {
+            const data = await searchResponse.json();
+            newsResults = data.articles;
+            response = RESPONSE_TEMPLATES.searchResults(data.keywords, data.articles.length);
+          } else {
+            response = RESPONSE_TEMPLATES.error();
+          }
+          break;
+        }
+
+        // 숫자 선택
+        case 'number_selection': {
+          commandExecuted = `select:${analysis.number}`;
+          response = RESPONSE_TEMPLATES.numberSelected(analysis.number!);
+          break;
+        }
+
+        // 네비게이션
+        case 'navigation': {
+          commandExecuted = analysis.keyword!;
+          response = analysis.keyword === 'next' ? '다음 문장으로 이동합니다.' : '이전 문장으로 돌아갑니다.';
+          break;
+        }
+
+        // 재생 제어
+        case 'playback': {
+          commandExecuted = analysis.keyword!;
+          if (analysis.keyword === 'pause') response = '재생을 일시정지합니다.';
+          else if (analysis.keyword === 'play') response = '재생을 시작합니다.';
+          else if (analysis.keyword === 'repeat') response = '현재 문장을 다시 재생합니다.';
+          break;
+        }
+
+        // 도움말
+        case 'help': {
+          response = RESPONSE_TEMPLATES.helpMessage();
+          break;
+        }
+
+        // 알 수 없는 명령
+        default: {
+          response = '명령을 이해하지 못했습니다. "도움말"이라고 말해보세요.';
+        }
       }
-    } else if (lowerText.includes('다음') || lowerText.includes('next')) {
-      commandExecuted = 'next';
-      response = '다음 문장으로 이동합니다.';
-    } else if (lowerText.includes('이전') || lowerText.includes('previous')) {
-      commandExecuted = 'previous';
-      response = '이전 문장으로 돌아갑니다.';
-    } else if (lowerText.includes('반복') || lowerText.includes('repeat')) {
-      commandExecuted = 'repeat';
-      response = '현재 문장을 다시 재생합니다.';
-    } else if (lowerText.includes('일시정지') || lowerText.includes('pause')) {
-      commandExecuted = 'pause';
-      response = '재생을 일시정지합니다.';
-    } else if (lowerText.includes('재생') || lowerText.includes('play')) {
-      commandExecuted = 'play';
-      response = '재생을 시작합니다.';
-    } else if (lowerText.includes('도움말') || lowerText.includes('help')) {
-      response = '사용 가능한 명령어: 검색, 다음, 이전, 반복, 재생, 일시정지';
-    } else if (/[0-9]+번째?/.test(text)) {
-      // 숫자 + "번째" 패턴 확인 (뉴스 선택)
-      const match = text.match(/([0-9]+)번째?/);
-      if (match) {
-        const number = parseInt(match[1]);
-        commandExecuted = `select:${number}`;
-        response = `${number}번째 뉴스를 선택했습니다.`;
-      }
-    } else {
-      response = '명령을 이해하지 못했습니다. "도움말"이라고 말해보세요.';
+    } catch (error) {
+      console.error('Command processing error:', error);
+      response = RESPONSE_TEMPLATES.error();
     }
 
     if (commandExecuted) {
@@ -270,13 +334,25 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
                         <h4 className={styles.newsTitle}>{news.title}</h4>
                         <p className={styles.newsSummary}>{news.summary}</p>
                         <div className={styles.newsMetadata}>
-                          <span className={styles.newsSource}>{news.source}</span>
-                          <span 
-                            className={styles.newsDifficulty}
-                            style={{ backgroundColor: getDifficultyColor(news.difficulty) }}
-                          >
-                            {getDifficultyLabel(news.difficulty)}
-                          </span>
+                          <span className={styles.newsSource}>📰 {news.source}</span>
+                          {news.category && (
+                            <span className={styles.newsCategory}>
+                              {news.category}
+                            </span>
+                          )}
+                          {news.difficulty && (
+                            <span 
+                              className={styles.newsDifficulty}
+                              style={{ backgroundColor: getDifficultyColor(news.difficulty) }}
+                            >
+                              {getDifficultyLabel(news.difficulty)}
+                            </span>
+                          )}
+                          {news.publishedAt && (
+                            <span className={styles.newsDate}>
+                              {new Date(news.publishedAt).toLocaleDateString('ko-KR')}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
