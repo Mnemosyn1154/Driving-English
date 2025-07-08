@@ -105,6 +105,8 @@ model User {
   progress          UserProgress[]
   preferences       UserPreference[]
   sessions          StudySession[]
+  keywords          UserKeyword[]
+  rssFeeds          UserRssFeed[]
 }
 
 // User progress tracking
@@ -200,4 +202,35 @@ model Cache {
   
   @@index([expires_at])
   @@map("cache")
+}
+
+// User search keywords
+model UserKeyword {
+  id        String   @id @default(uuid())
+  userId    String
+  keyword   String
+  weight    Float    @default(1.0) // 중요도/빈도
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  user      User     @relation(fields: [userId], references: [id])
+  
+  @@unique([userId, keyword])
+  @@index([keyword])
+}
+
+// User custom RSS feeds
+model UserRssFeed {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String
+  url       String
+  category  String?
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  user      User     @relation(fields: [userId], references: [id])
+  
+  @@unique([userId, url])
 }

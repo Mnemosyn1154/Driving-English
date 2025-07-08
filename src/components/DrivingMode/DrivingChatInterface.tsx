@@ -11,6 +11,17 @@ export interface ChatMessage {
   timestamp: Date;
   englishText?: string;
   koreanText?: string;
+  newsResults?: NewsSearchResult[];
+}
+
+interface NewsSearchResult {
+  id: string;
+  title: string;
+  summary: string;
+  source: string;
+  difficulty: number;
+  url: string;
+  selectionNumber: number;
 }
 
 interface DrivingChatInterfaceProps {
@@ -31,7 +42,7 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
     {
       id: '1',
       type: 'system',
-      content: '안녕하세요! 운전 중 영어 학습을 도와드리겠습니다. 음성이나 텍스트로 명령해주세요.',
+      content: '안녕하세요! 운전 중 영어 학습을 도와드리겠습니다. 음성이나 텍스트로 명령해주세요. "AI 뉴스 검색"과 같이 말해보세요.',
       timestamp: new Date()
     }
   ]);
@@ -73,12 +84,38 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
   }, [currentSentence]);
 
   // Process command and get response
-  const processCommand = (text: string) => {
+  const processCommand = async (text: string): Promise<{ response: string; newsResults?: NewsSearchResult[] }> => {
     const lowerText = text.toLowerCase();
     let response = '';
     let commandExecuted = '';
+    let newsResults: NewsSearchResult[] | undefined = undefined;
 
-    if (lowerText.includes('다음') || lowerText.includes('next')) {
+    // 뉴스 검색 명령 확인
+    if (lowerText.includes('검색') || lowerText.includes('찾아') || 
+        (lowerText.includes('관련') && lowerText.includes('뉴스'))) {
+      // 음성 검색 API 호출
+      try {
+        const searchResponse = await fetch('/api/news/voice-search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            transcript: text,
+            userId: localStorage.getItem('deviceId') // 임시 사용자 ID
+          })
+        });
+        
+        if (searchResponse.ok) {
+          const data = await searchResponse.json();
+          newsResults = data.articles;
+          response = `"${data.keywords.join(', ')}" 관련 뉴스 ${data.articles.length}개를 찾았습니다. 번호를 말씀해주시면 해당 뉴스를 선택할 수 있습니다.`;
+        } else {
+          response = '뉴스 검색 중 오류가 발생했습니다.';
+        }
+      } catch (error) {
+        console.error('Search error:', error);
+        response = '검색 서비스에 연결할 수 없습니다.';
+      }
+    } else if (lowerText.includes('다음') || lowerText.includes('next')) {
       commandExecuted = 'next';
       response = '다음 문장으로 이동합니다.';
     } else if (lowerText.includes('이전') || lowerText.includes('previous')) {
@@ -94,7 +131,15 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
       commandExecuted = 'play';
       response = '재생을 시작합니다.';
     } else if (lowerText.includes('도움말') || lowerText.includes('help')) {
-      response = '사용 가능한 명령어: 다음, 이전, 반복, 재생, 일시정지';
+      response = '사용 가능한 명령어: 검색, 다음, 이전, 반복, 재생, 일시정지';
+    } else if (/[0-9]+번째?/.test(text)) {
+      // 숫자 + "번째" 패턴 확인 (뉴스 선택)
+      const match = text.match(/([0-9]+)번째?/);
+      if (match) {
+        const number = parseInt(match[1]);
+        commandExecuted = `select:${number}`;
+        response = `${number}번째 뉴스를 선택했습니다.`;
+      }
     } else {
       response = '명령을 이해하지 못했습니다. "도움말"이라고 말해보세요.';
     }
@@ -103,7 +148,7 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
       onCommand(commandExecuted);
     }
 
-    return response;
+    return { response, newsResults };
   };
 
   // Handle speech recognition result
@@ -120,17 +165,17 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
 
       // Process and respond
       setIsProcessing(true);
-      setTimeout(() => {
-        const response = processCommand(transcript);
+      processCommand(transcript).then(({ response, newsResults }) => {
         const aiMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
           type: 'assistant',
           content: response,
-          timestamp: new Date()
+          timestamp: new Date(),
+          newsResults
         };
         setMessages(prev => [...prev, aiMessage]);
         setIsProcessing(false);
-      }, 500);
+      });
 
       resetTranscript();
     }
@@ -154,17 +199,17 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
       const messageText = inputText.trim();
       setInputText('');
 
-      setTimeout(() => {
-        const response = processCommand(messageText);
+      processCommand(messageText).then(({ response, newsResults }) => {
         const aiMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
           type: 'assistant',
           content: response,
-          timestamp: new Date()
+          timestamp: new Date(),
+          newsResults
         };
         setMessages(prev => [...prev, aiMessage]);
         setIsProcessing(false);
-      }, 500);
+      });
     }
   };
 
@@ -175,6 +220,17 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
     } else {
       startListening();
     }
+  };
+
+  // 난이도 표시 함수
+  const getDifficultyLabel = (difficulty: number) => {
+    const labels = ['초급', '초중급', '중급', '중상급', '상급'];
+    return labels[difficulty - 1] || '중급';
+  };
+
+  const getDifficultyColor = (difficulty: number) => {
+    const colors = ['#4CAF50', '#8BC34A', '#FFC107', '#FF9800', '#F44336'];
+    return colors[difficulty - 1] || '#FFC107';
   };
 
   return (
@@ -203,6 +259,28 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
                 <div className={styles.sentenceBox}>
                   <div className={styles.englishText}>{message.englishText}</div>
                   <div className={styles.koreanText}>{message.koreanText}</div>
+                </div>
+              )}
+              {message.newsResults && message.newsResults.length > 0 && (
+                <div className={styles.newsResults}>
+                  {message.newsResults.map((news) => (
+                    <div key={news.id} className={styles.newsCard}>
+                      <div className={styles.newsNumber}>{news.selectionNumber}</div>
+                      <div className={styles.newsContent}>
+                        <h4 className={styles.newsTitle}>{news.title}</h4>
+                        <p className={styles.newsSummary}>{news.summary}</p>
+                        <div className={styles.newsMetadata}>
+                          <span className={styles.newsSource}>{news.source}</span>
+                          <span 
+                            className={styles.newsDifficulty}
+                            style={{ backgroundColor: getDifficultyColor(news.difficulty) }}
+                          >
+                            {getDifficultyLabel(news.difficulty)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
               <div className={styles.messageTime}>
