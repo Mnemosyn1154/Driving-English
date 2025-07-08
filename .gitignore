@@ -52,3 +52,15 @@ credentials/
 # OS
 .DS_Store
 Thumbs.db
+
+# Temporary files
+/temp
+/tmp
+*.log
+simple-server.js
+check-db.js
+test-page.html
+
+# Chrome MCP Extension
+chrome-mcp-extension.zip
+mcp-chrome/

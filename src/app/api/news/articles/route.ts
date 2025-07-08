@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
       maxDifficulty: searchParams.get('maxDifficulty')
         ? parseInt(searchParams.get('maxDifficulty')!)
         : undefined,
-      isProcessed: searchParams.get('isProcessed') !== 'false',
+      // isProcessed: searchParams.get('isProcessed') !== 'false', // 성능 개선을 위해 임시 제거
       search: searchParams.get('search') || undefined,
       tags: searchParams.get('tags')?.split(',').filter(Boolean) || undefined,
       dateFrom: searchParams.get('dateFrom')

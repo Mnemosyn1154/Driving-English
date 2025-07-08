@@ -17,24 +17,18 @@ interface Article {
 
 interface NewsListProps {
   category?: string;
-  initialArticles?: Article[];
 }
 
-export function NewsList({ category, initialArticles = [] }: NewsListProps) {
-  const [articles, setArticles] = useState<Article[]>(initialArticles);
-  const [loading, setLoading] = useState(false);
+export function NewsList({ category }: NewsListProps) {
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
 
-  // 초기 데이터가 있으면 클라이언트 측 로딩을 하지 않음
-  const shouldLoadOnClient = initialArticles.length === 0;
-
   useEffect(() => {
-    if (shouldLoadOnClient) {
-      fetchArticles();
-    }
-  }, [page, category, shouldLoadOnClient]);
+    fetchArticles();
+  }, [page, category]);
 
   async function fetchArticles() {
     try {

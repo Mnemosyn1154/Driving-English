@@ -35,7 +35,8 @@ export class NewsService {
       difficulty,
       minDifficulty,
       maxDifficulty,
-      isProcessed = true,
+      // isProcessed = true, // 성능 개선을 위해 기본값 제거
+      isProcessed,
       search,
       tags,
       dateFrom,
@@ -51,7 +52,7 @@ export class NewsService {
 
     // Build where clause
     const where: Prisma.ArticleWhereInput = {
-      isProcessed,
+      ...(isProcessed !== undefined && { isProcessed }),
       ...(category && { category }),
       ...(difficulty && { difficulty }),
       ...(minDifficulty && { difficulty: { gte: minDifficulty } }),
@@ -92,9 +93,7 @@ export class NewsService {
         source: {
           select: { name: true },
         },
-        sentences: {
-          select: { id: true },
-        },
+        // sentences 제거 - 필요시에만 로드
       },
       orderBy: { [orderBy]: order },
       skip: (page - 1) * limit,
@@ -105,8 +104,7 @@ export class NewsService {
     const response = {
       articles: articles.map(article => ({
         ...article,
-        sentenceCount: article.sentences.length,
-        sentences: undefined, // Remove sentences from response
+        sentenceCount: 0, // 임시로 0으로 설정
       })),
       pagination: {
         page,
