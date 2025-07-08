@@ -1,0 +1,2 @@
+Icon files need to be generated from the SVG.
+Use an online converter or graphic tool to convert icon.svg to PNG formats.

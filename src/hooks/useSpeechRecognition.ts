@@ -21,12 +21,17 @@ export function useSpeechRecognition(lang: string = 'ko-KR'): UseSpeechRecogniti
   const [transcript, setTranscript] = useState('');
   const [interimTranscript, setInterimTranscript] = useState('');
   const [error, setError] = useState<Error | null>(null);
+  const [isSupported, setIsSupported] = useState(false);
   
   const recognitionRef = useRef<any>(null);
   
-  // Check browser support
-  const isSupported = typeof window !== 'undefined' && 
-    ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+  // Check browser support after mount
+  useEffect(() => {
+    setIsSupported(
+      typeof window !== 'undefined' && 
+      ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
+    );
+  }, []);
 
   useEffect(() => {
     if (!isSupported) return;

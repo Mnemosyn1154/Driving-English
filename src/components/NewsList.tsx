@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/hooks/useAuth';
 import styles from './NewsList.module.css';
 
 interface Article {
@@ -17,14 +18,17 @@ interface Article {
 
 interface NewsListProps {
   category?: string;
+  personalized?: boolean;
 }
 
-export function NewsList({ category }: NewsListProps) {
+export function NewsList({ category, personalized = true }: NewsListProps) {
+  const { user } = useAuth();
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
+  const [isPersonalized, setIsPersonalized] = useState(false);
 
   useEffect(() => {
     fetchArticles();
@@ -33,18 +37,42 @@ export function NewsList({ category }: NewsListProps) {
   async function fetchArticles() {
     try {
       setLoading(true);
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: '10',
-        ...(category && { category }),
-      });
-
-      const response = await fetch(`/api/news/articles?${params}`);
+      
+      // 개인화 설정 확인
+      const preferences = localStorage.getItem('newsPreferences');
+      const deviceId = localStorage.getItem('deviceId');
+      const shouldPersonalize = personalized && (preferences || user);
+      
+      let response;
+      if (shouldPersonalize) {
+        // 개인화된 뉴스 가져오기
+        const params = new URLSearchParams();
+        if (user) {
+          // TODO: user.id 대신 DB에서 가져온 userId 사용
+          params.append('userId', user.id);
+        } else if (deviceId) {
+          params.append('deviceId', deviceId);
+        }
+        
+        response = await fetch(`/api/news/personalized?${params}`);
+        setIsPersonalized(true);
+      } else {
+        // 일반 뉴스 가져오기
+        const params = new URLSearchParams({
+          page: page.toString(),
+          limit: '10',
+          ...(category && { category }),
+        });
+        
+        response = await fetch(`/api/news/articles?${params}`);
+        setIsPersonalized(false);
+      }
+      
       if (!response.ok) throw new Error('Failed to fetch articles');
 
       const data = await response.json();
       setArticles(data.articles);
-      setHasMore(data.pagination.hasNext);
+      setHasMore(data.pagination?.hasNext || false);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -89,6 +117,11 @@ export function NewsList({ category }: NewsListProps) {
 
   return (
     <div className={styles.container}>
+      {isPersonalized && (
+        <div className={styles.personalizedBadge}>
+          🎯 개인화된 추천
+        </div>
+      )}
       <div className={styles.articleList}>
         {articles.map((article) => (
           <Link

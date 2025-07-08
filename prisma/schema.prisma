@@ -91,6 +91,7 @@ model Sentence {
 // User data
 model User {
   id                String    @id @default(uuid())
+  supabaseId        String?   @unique // Supabase Auth ID
   email             String?   @unique
   name              String?
   deviceId          String    @unique // For anonymous users
@@ -107,6 +108,7 @@ model User {
   sessions          StudySession[]
   keywords          UserKeyword[]
   rssFeeds          UserRssFeed[]
+  newsSearches      NewsSearch[] // 사용자의 검색 기록
 }
 
 // User progress tracking
@@ -233,4 +235,20 @@ model UserRssFeed {
   user      User     @relation(fields: [userId], references: [id])
   
   @@unique([userId, url])
+}
+
+// News search history
+model NewsSearch {
+  id            String   @id @default(uuid())
+  userId        String
+  transcript    String   @db.Text // 원본 음성 텍스트
+  keywords      String[] // 추출된 키워드
+  resultCount   Int      // 검색 결과 수
+  selectedId    String?  // 선택한 기사 ID
+  createdAt     DateTime @default(now())
+  
+  user          User     @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([createdAt])
 }

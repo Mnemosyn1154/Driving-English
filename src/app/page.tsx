@@ -1,19 +1,51 @@
+'use client';
+
 import styles from './page.module.css';
 import Link from 'next/link';
 import { NewsList } from '@/components/NewsList';
-
-// 서버에서 데이터를 가져오는 함수
-async function getArticles() {
-  // 임시로 비활성화 - 클라이언트에서 처리
-  return [];
-}
+import { AuthModal } from '@/components/Auth/AuthModal';
+import { NewsSelector } from '@/components/NewsSelector/NewsSelector';
+import { useAuth } from '@/hooks/useAuth';
+import { useState, useEffect } from 'react';
 
 export default function Home() {
-  // 서버 컴포넌트로 변경 (하이드레이션 문제 해결)
-  const articles: any[] = [];
+  const { user, loading, signOut } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showNewsSelector, setShowNewsSelector] = useState(false);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // 디바이스 ID 생성 또는 가져오기
+    let id = localStorage.getItem('deviceId');
+    if (!id) {
+      id = 'device-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem('deviceId', id);
+    }
+    setDeviceId(id);
+  }, []);
+
   return (
     <main className={styles.main}>
       <div className={styles.hero}>
+        <div className={styles.authSection}>
+          {loading ? (
+            <span>로딩중...</span>
+          ) : user ? (
+            <div className={styles.userInfo}>
+              <span>👤 {user.email}</span>
+              <button onClick={signOut} className={styles.logoutButton}>
+                로그아웃
+              </button>
+            </div>
+          ) : (
+            <button 
+              onClick={() => setShowAuthModal(true)} 
+              className={styles.loginButton}
+            >
+              로그인
+            </button>
+          )}
+        </div>
         <h1 className={styles.title}>Driving English</h1>
         <p className={styles.subtitle}>
           운전하며 배우는 AI 영어 뉴스 서비스
@@ -51,7 +83,15 @@ export default function Home() {
       </div>
 
       <section className={styles.newsSection}>
-        <h2 className={styles.sectionTitle}>최신 뉴스</h2>
+        <div className={styles.newsSectionHeader}>
+          <h2 className={styles.sectionTitle}>최신 뉴스</h2>
+          <button 
+            className={styles.personalizeButton}
+            onClick={() => setShowNewsSelector(true)}
+          >
+            ⚙️ 개인화 설정
+          </button>
+        </div>
         <NewsList />
       </section>
 
@@ -61,6 +101,21 @@ export default function Home() {
           이 서비스는 정차 중이거나 동승자가 조작할 때 사용하시기 바랍니다.
         </p>
       </div>
+
+      <AuthModal 
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={() => {
+          setShowAuthModal(false);
+          // 로그인 성공 후 추가 처리 가능
+        }}
+      />
+
+      {showNewsSelector && (
+        <div className={styles.modalOverlay}>
+          <NewsSelector onClose={() => setShowNewsSelector(false)} />
+        </div>
+      )}
     </main>
   );
 }

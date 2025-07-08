@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { DrivingChatInterface } from '@/components/DrivingMode/DrivingChatInterface';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
+import { AuthModal } from '@/components/Auth/AuthModal';
 import styles from './page.module.css';
 
 // Mock data for testing
@@ -39,8 +41,19 @@ const mockArticle = {
 
 export default function DrivingModePage() {
   const router = useRouter();
+  const { user, loading } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+
+  // 로그인 상태 확인
+  useEffect(() => {
+    const skipAuth = localStorage.getItem('skipAuth');
+    if (!loading && !user && !skipAuth) {
+      // 로그인되지 않은 경우 모달 표시
+      setShowAuthModal(true);
+    }
+  }, [user, loading]);
 
   // Handle voice commands
   const handleCommand = useCallback((command: string) => {
@@ -128,6 +141,21 @@ export default function DrivingModePage() {
           <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
         </svg>
       </button>
+
+      <AuthModal 
+        isOpen={showAuthModal}
+        onClose={() => {
+          setShowAuthModal(false);
+          // 로그인하지 않고 닫으면 홈으로 이동
+          if (!user) {
+            router.push('/');
+          }
+        }}
+        onSuccess={() => {
+          setShowAuthModal(false);
+          // 로그인 성공 시 계속 진행
+        }}
+      />
     </div>
   );
 }
