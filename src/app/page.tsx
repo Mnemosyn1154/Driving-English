@@ -28,8 +28,10 @@ export default function Home() {
 
   return (
     <main className={styles.main}>
-      <div className={styles.hero}>
-        <div className={styles.authSection}>
+      <nav className={styles.navbar}>
+        <div className={styles.navContainer}>
+          <div className={styles.logo}>Driving English</div>
+          <div className={styles.authSection}>
           {loading ? (
             <span>로딩중...</span>
           ) : user ? (
@@ -47,7 +49,10 @@ export default function Home() {
               로그인
             </button>
           )}
+          </div>
         </div>
+      </nav>
+      <div className={styles.hero}>
         <h1 className={styles.title}>Driving English</h1>
         <p className={styles.subtitle}>
           운전하며 배우는 AI 영어 뉴스 서비스
@@ -102,11 +107,11 @@ export default function Home() {
             }
           }}
         >
-          학습 시작하기
+          🎧 경험해보기
         </button>
         
         <Link href="/test-wakeword" className={styles.secondaryButton}>
-          음성 인식 테스트
+          🎤 음성 인식 테스트
         </Link>
       </div>
 

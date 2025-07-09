@@ -43,7 +43,11 @@
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 20px;
+  gap: 30px;
+}
+
+.headerText {
+  flex: 1;
 }
 
 .header h1 {
@@ -120,7 +124,12 @@
   
   .headerContent {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
+    text-align: center;
+  }
+  
+  .headerText {
+    margin-bottom: 20px;
   }
   
   .startLearningButton {

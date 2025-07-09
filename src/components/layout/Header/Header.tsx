@@ -39,12 +39,6 @@ export const Header: React.FC = () => {
                 대시보드
               </Link>
               <Link
-                href="/learn"
-                className={`${styles.navLink} ${styles.primaryLink}`}
-              >
-                학습하기
-              </Link>
-              <Link
                 href="/settings"
                 className={`${styles.navLink} ${pathname === '/settings' ? styles.active : ''}`}
               >

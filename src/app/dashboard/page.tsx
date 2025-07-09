@@ -51,17 +51,19 @@ export default function DashboardPage() {
       <div className={styles.dashboard}>
         {/* 헤더 */}
         <header className={styles.header}>
-        <div className={styles.headerContent}>
-          <h1>안녕하세요, {user?.email?.split('@')[0] || '학습자'}님! 👋</h1>
-          <p className={styles.subtitle}>오늘도 영어 실력을 향상시켜보세요</p>
-        </div>
-        <button
-          className={styles.startLearningButton}
-          onClick={() => router.push('/learn')}
-        >
-          🎧 학습 시작하기
-        </button>
-      </header>
+          <div className={styles.headerContent}>
+            <div className={styles.headerText}>
+              <h1>안녕하세요, {user?.email?.split('@')[0] || '학습자'}님! 👋</h1>
+              <p className={styles.subtitle}>오늘도 영어 실력을 향상시켜보세요</p>
+            </div>
+            <button
+              className={styles.startLearningButton}
+              onClick={() => router.push('/learn')}
+            >
+              🎧 학습 시작하기
+            </button>
+          </div>
+        </header>
 
       {/* 대시보드 그리드 */}
       <div className={styles.grid}>
