@@ -3,7 +3,7 @@ import { FetchNewsJobData, updateJobStatus, createJobRecord, JobType, processing
 import { prisma } from '../../database/prisma';
 import { NewsFetcher } from '../../news/fetcher';
 import { NewsParser } from '../../news/parser';
-import { cacheSet } from '../../cache/redis';
+import { cacheSet } from '../../cache';
 
 export async function processNewsFetchJob(job: Job<FetchNewsJobData>) {
   const { sourceId, category } = job.data;

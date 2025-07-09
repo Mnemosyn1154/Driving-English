@@ -9,7 +9,7 @@ import styles from './Header.module.css';
 export const Header: React.FC = () => {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, signOut, isAuthenticated, isSkipAuth, clearSkipAuth } = useAuth();
 
   // 헤더를 숨길 페이지들
   const hideHeaderPaths = ['/learn', '/driving'];
@@ -18,8 +18,13 @@ export const Header: React.FC = () => {
   }
 
   const handleSignOut = async () => {
-    await signOut();
-    router.push('/');
+    if (isSkipAuth) {
+      clearSkipAuth();
+      router.push('/');
+    } else {
+      await signOut();
+      router.push('/');
+    }
   };
 
   return (
@@ -30,7 +35,7 @@ export const Header: React.FC = () => {
         </Link>
 
         <nav className={styles.nav}>
-          {(user || localStorage.getItem('skipAuth') === 'true') && (
+          {isAuthenticated && (
             <>
               <Link
                 href="/dashboard"
@@ -51,11 +56,13 @@ export const Header: React.FC = () => {
         <div className={styles.actions}>
           {loading ? (
             <span className={styles.loading}>로딩중...</span>
-          ) : user ? (
+          ) : isAuthenticated ? (
             <div className={styles.userMenu}>
-              <span className={styles.userEmail}>{user.email}</span>
+              <span className={styles.userEmail}>
+                {isSkipAuth ? '게스트 모드' : user?.email}
+              </span>
               <button onClick={handleSignOut} className={styles.signOutButton}>
-                로그아웃
+                {isSkipAuth ? '종료' : '로그아웃'}
               </button>
             </div>
           ) : (

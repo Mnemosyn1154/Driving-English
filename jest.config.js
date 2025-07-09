@@ -30,6 +30,7 @@ const customJestConfig = {
     },
   },
   testMatch: [
+    '<rootDir>/__tests__/**/*.test.{js,jsx,ts,tsx}',
     '<rootDir>/tests/**/*.test.{js,jsx,ts,tsx}',
     '<rootDir>/src/**/*.test.{js,jsx,ts,tsx}',
   ],

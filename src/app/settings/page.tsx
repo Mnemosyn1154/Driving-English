@@ -1,16 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { withAuth } from '@/components/Auth/withAuth';
 import { useAuth } from '@/hooks/useAuth';
 import { Header } from '@/components/layout/Header/Header';
 import { NewsSelector } from '@/components/NewsSelector/NewsSelector';
 import styles from './settings.module.css';
 
-export default function SettingsPage() {
-  const router = useRouter();
+function SettingsContent() {
   const searchParams = useSearchParams();
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('general');
 
   useEffect(() => {
@@ -21,21 +21,6 @@ export default function SettingsPage() {
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    // 로그인하지 않은 경우 홈으로 리다이렉트
-    if (!loading && !user && localStorage.getItem('skipAuth') !== 'true') {
-      router.push('/');
-    }
-  }, [user, loading, router]);
-
-  if (loading) {
-    return (
-      <div className={styles.loading}>
-        <div className={styles.spinner}></div>
-        <p>설정을 불러오는 중...</p>
-      </div>
-    );
-  }
 
   return (
     <>
@@ -117,5 +102,16 @@ export default function SettingsPage() {
         </div>
       </div>
     </>
+  );
+}
+
+// Protected component with authentication
+const ProtectedSettingsContent = withAuth(SettingsContent, { allowSkipAuth: true });
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ProtectedSettingsContent />
+    </Suspense>
   );
 }

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { authHelpers } from '@/lib/supabase-client';
+import { useAuth } from '@/hooks/useAuth';
 import styles from './AuthModal.module.css';
 
 interface AuthModalProps {
@@ -17,6 +18,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { skipAuth } = useAuth();
 
   if (!isOpen) return null;
 
@@ -150,19 +152,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
         </p>
 
         {/* 로그인 없이 계속하기 */}
-        <div className={styles.skipAuth}>
-          <button
-            onClick={() => {
-              // 로그인 없이 계속하기 (deviceId만 사용)
-              localStorage.setItem('skipAuth', 'true');
-              onSuccess();
-              onClose();
-            }}
-            className={styles.skipButton}
-          >
-            로그인 없이 계속하기
-          </button>
-        </div>
+        {process.env.NEXT_PUBLIC_SKIP_AUTH === 'true' && (
+          <div className={styles.skipAuth}>
+            <button
+              onClick={() => {
+                // 로그인 없이 계속하기 (deviceId만 사용)
+                skipAuth();
+                onSuccess();
+                onClose();
+              }}
+              className={styles.skipButton}
+            >
+              로그인 없이 계속하기
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

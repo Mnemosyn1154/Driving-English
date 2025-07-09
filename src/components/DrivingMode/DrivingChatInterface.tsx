@@ -4,6 +4,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import styles from './DrivingChatInterface.module.css';
 
+// Generate unique IDs for messages
+let messageIdCounter = 0;
+const generateMessageId = () => {
+  return `msg-${Date.now()}-${++messageIdCounter}`;
+};
+
 export interface ChatMessage {
   id: string;
   type: 'user' | 'assistant' | 'system';
@@ -76,7 +82,7 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
   useEffect(() => {
     if (currentSentence) {
       const sentenceMessage: ChatMessage = {
-        id: Date.now().toString(),
+        id: generateMessageId(),
         type: 'assistant',
         content: '현재 문장:',
         englishText: currentSentence.text,
@@ -222,7 +228,7 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
     if (transcript && transcript.trim()) {
       // Add user message
       const userMessage: ChatMessage = {
-        id: Date.now().toString(),
+        id: generateMessageId(),
         type: 'user',
         content: transcript,
         timestamp: new Date()
@@ -233,7 +239,7 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
       setIsProcessing(true);
       processCommand(transcript).then(({ response, newsResults }) => {
         const aiMessage: ChatMessage = {
-          id: (Date.now() + 1).toString(),
+          id: generateMessageId(),
           type: 'assistant',
           content: response,
           timestamp: new Date(),
@@ -253,7 +259,7 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
     if (inputText.trim() && !isProcessing) {
       // Add user message
       const userMessage: ChatMessage = {
-        id: Date.now().toString(),
+        id: generateMessageId(),
         type: 'user',
         content: inputText.trim(),
         timestamp: new Date()
@@ -267,7 +273,7 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
 
       processCommand(messageText).then(({ response, newsResults }) => {
         const aiMessage: ChatMessage = {
-          id: (Date.now() + 1).toString(),
+          id: generateMessageId(),
           type: 'assistant',
           content: response,
           timestamp: new Date(),

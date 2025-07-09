@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3003",
+    "dev": "NODE_OPTIONS='--dns-result-order=ipv4first' next dev -H 127.0.0.1 -p 3003",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -16,7 +16,9 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "tsx scripts/seed-database.ts",
-    "worker": "tsx src/services/server/jobs/worker.ts"
+    "worker": "tsx src/services/server/jobs/worker.ts",
+    "build-server": "tsc --project tsconfig.server.json",
+    "start-server": "npm run build-server && node server.js"
   },
   "keywords": [],
   "author": "",
@@ -29,10 +31,11 @@
     "@prisma/client": "^6.11.1",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.50.3",
-    "@tailwindcss/postcss": "^4.1.11",
     "@types/bull": "^3.15.9",
     "@types/node-fetch": "^2.6.12",
     "bull": "^4.16.5",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
     "next": "^15.3.5",
     "node-fetch": "^3.3.2",
@@ -45,9 +48,12 @@
     "ws": "^8.18.3"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.11",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
     "@types/jest": "^30.0.0",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.0.10",

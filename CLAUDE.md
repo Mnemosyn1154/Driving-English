@@ -40,12 +40,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
+⚠️ **중요: ERR_CONNECTION_REFUSED 방지**
+- 항상 `http://127.0.0.1:3003` 사용 (localhost 금지)
+- package.json의 dev 스크립트가 `-H 127.0.0.1` 포함하는지 확인
+
 ```bash
 # Install dependencies
 npm install
 
-# Run development server
+# Run development server (자동으로 127.0.0.1:3003 사용)
 npm run dev
+
+# 브라우저에서 열기
+open http://127.0.0.1:3003
 
 # Build for production
 npm run build

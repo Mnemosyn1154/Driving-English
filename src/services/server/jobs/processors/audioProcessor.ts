@@ -2,7 +2,7 @@ import { Job } from 'bull';
 import { PregenerateAudioJobData, updateJobStatus, createJobRecord, JobType } from '../queue';
 import { prisma } from '../../database/prisma';
 import { TTSService } from '../../tts/ttsService';
-import { cacheSet, cacheGet } from '../../cache/redis';
+import { cacheSet, cacheGet } from '../../cache';
 
 export async function processAudioGenerationJob(job: Job<PregenerateAudioJobData>) {
   const { articleId, sentences: sentenceIndices } = job.data;

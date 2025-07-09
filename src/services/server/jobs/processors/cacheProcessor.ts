@@ -1,7 +1,7 @@
 import { Job } from 'bull';
 import { CleanupCacheJobData, updateJobStatus, createJobRecord, JobType } from '../queue';
 import { prisma } from '../../database/prisma';
-import { cacheDeleteByPattern, getRedisClient } from '../../cache/redis';
+import { cacheDeleteByPattern, getRedisClient } from '../../cache';
 
 export async function processCacheCleanupJob(job: Job<CleanupCacheJobData>) {
   const { type, olderThanDays = 7 } = job.data;

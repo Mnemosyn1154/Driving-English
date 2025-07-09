@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { withAuth } from '@/components/Auth/withAuth';
 import { Header } from '@/components/layout/Header/Header';
 import { LearningStats } from '@/components/Dashboard/LearningStats/LearningStats';
 import { MyRSSFeeds } from '@/components/Dashboard/MyRSSFeeds/MyRSSFeeds';
@@ -14,36 +14,22 @@ import { PersonalizationStatus } from '@/components/Dashboard/PersonalizationSta
 import { OnboardingModal } from '@/components/Onboarding/OnboardingModal';
 import styles from './dashboard.module.css';
 
-export default function DashboardPage() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
+function DashboardPage() {
+  const { user, isSkipAuth } = useAuth();
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
-    // 로그인하지 않은 경우 홈으로 리다이렉트
-    if (!loading && !user && localStorage.getItem('skipAuth') !== 'true') {
-      router.push('/');
-    }
-    
     // 첫 사용자인지 확인
-    if (!loading && (user || localStorage.getItem('skipAuth') === 'true')) {
-      const onboardingCompleted = localStorage.getItem('onboardingCompleted');
-      const hasCategories = localStorage.getItem('newsPreferences');
-      
-      if (!onboardingCompleted && !hasCategories) {
-        setShowOnboarding(true);
-      }
+    const onboardingCompleted = localStorage.getItem('onboardingCompleted');
+    const hasCategories = localStorage.getItem('newsPreferences');
+    
+    if (!onboardingCompleted && !hasCategories) {
+      setShowOnboarding(true);
     }
-  }, [user, loading, router]);
+  }, []);
 
-  if (loading) {
-    return (
-      <div className={styles.loading}>
-        <div className={styles.spinner}></div>
-        <p>대시보드를 불러오는 중...</p>
-      </div>
-    );
-  }
+  // No need for loading state - withAuth handles it
+  // No need for auth check - withAuth handles it
 
   return (
     <>
@@ -53,12 +39,12 @@ export default function DashboardPage() {
         <header className={styles.header}>
           <div className={styles.headerContent}>
             <div className={styles.headerText}>
-              <h1>안녕하세요, {user?.email?.split('@')[0] || '학습자'}님! 👋</h1>
+              <h1>안녕하세요, {user?.email?.split('@')[0] || (isSkipAuth ? '게스트' : '학습자')}님! 👋</h1>
               <p className={styles.subtitle}>오늘도 영어 실력을 향상시켜보세요</p>
             </div>
             <button
               className={styles.startLearningButton}
-              onClick={() => router.push('/learn')}
+              onClick={() => window.location.href = '/learn'}
             >
               🎧 학습 시작하기
             </button>
@@ -96,3 +82,6 @@ export default function DashboardPage() {
     </>
   );
 }
+
+// Export with authentication
+export default withAuth(DashboardPage, { allowSkipAuth: true });

@@ -5,12 +5,14 @@ import { mockArticles } from '@/services/server/mock/mockData';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { articleId: string } }
+  { params }: { params: Promise<{ articleId: string }> }
 ) {
   try {
+    const { articleId } = await params;
+    
     // Use mock data if in mock mode
     if (isMockMode) {
-      const article = mockArticles.find(a => a.id === params.articleId);
+      const article = mockArticles.find(a => a.id === articleId);
       if (!article) {
         return NextResponse.json(
           { error: 'Article not found' },
@@ -21,7 +23,7 @@ export async function GET(
     }
     
     const newsService = new NewsService();
-    const article = await newsService.getArticle(params.articleId);
+    const article = await newsService.getArticle(articleId);
 
     if (!article) {
       return NextResponse.json(

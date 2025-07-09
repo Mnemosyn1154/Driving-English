@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { NewsAPISearchService } from '@/services/server/news/newsApiSearch';
 import { NewsService } from '@/services/server/news/newsService';
 import { prisma } from '@/services/server/database/prisma';
-import { userService } from '@/lib/user-service';
+import { getAuthContext } from '@/lib/api-auth';
 
 // Gemini를 사용한 키워드 추출 (간단한 구현)
 async function extractKeywords(transcript: string): Promise<string[]> {
@@ -170,7 +170,7 @@ async function calculatePersonalizedScore(
 
 export async function POST(request: NextRequest) {
   try {
-    const { transcript, userId, deviceId } = await request.json();
+    const { transcript } = await request.json();
     
     if (!transcript) {
       return NextResponse.json(
@@ -179,20 +179,15 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    // Get authenticated user or device user
+    const auth = await getAuthContext(request);
+    
     // 1. 키워드 추출
     const keywords = await extractKeywords(transcript);
     console.log('Extracted keywords:', keywords);
     
-    // 2. 사용자 확인 (deviceId로도 가능)
-    let dbUserId = userId;
-    if (!dbUserId && deviceId) {
-      try {
-        const user = await userService.ensureUser(null, deviceId);
-        dbUserId = user.id;
-      } catch (error) {
-        console.error('Error getting user by deviceId:', error);
-      }
-    }
+    // 2. 사용자 ID 확인
+    const dbUserId = auth.userId;
     
     // 3. 사용자 키워드 저장
     if (dbUserId) {
@@ -245,7 +240,7 @@ export async function POST(request: NextRequest) {
     // 5. 결과 병합 및 중복 제거
     const allArticles = [
       // 사용자 RSS 피드 기사 (최우선)
-      ...(userFeedResults || []).map(article => ({
+      ...(userFeedResults || []).map((article: any) => ({
         ...article,
         source: article.source?.name || 'User RSS Feed',
         sourceType: 'RSS',
@@ -253,7 +248,7 @@ export async function POST(request: NextRequest) {
         isFromUserFeed: true
       })),
       // News API 결과
-      ...(newsApiResults?.articles || []).map(article => ({
+      ...(newsApiResults?.articles || []).map((article: any) => ({
         ...article,
         source: article.source || 'News API',
         sourceType: 'API',
@@ -261,7 +256,7 @@ export async function POST(request: NextRequest) {
         isFromUserFeed: false
       })),
       // 일반 DB 결과
-      ...(dbResults?.articles || []).map(article => ({
+      ...(dbResults?.articles || []).map((article: any) => ({
         ...article,
         sourceType: 'DB',
         isExternal: false,

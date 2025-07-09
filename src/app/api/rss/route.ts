@@ -1,24 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { userService } from '@/lib/user-service';
-import { createClient } from '@/lib/supabase-server';
+import { getAuthContext } from '@/lib/api-auth';
 
 // GET /api/rss - 사용자 RSS 피드 목록 조회
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const deviceId = searchParams.get('deviceId');
+    // Get authenticated user or device user
+    const auth = await getAuthContext(request);
     
-    // Supabase 인증 확인
-    const supabase = createClient();
-    const { data: { user: supabaseUser } } = await supabase.auth.getUser();
-    
-    // 사용자 확인
-    const user = await userService.ensureUser(supabaseUser, deviceId || undefined);
+    if (!auth.isAuthenticated) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
     
     // RSS 피드 목록 조회
     const feeds = await prisma.userRssFeed.findMany({
-      where: { userId: user.id },
+      where: { userId: auth.userId! },
       orderBy: { createdAt: 'desc' }
     });
     
@@ -36,7 +35,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, url, category, deviceId } = body;
+    const { name, url, category } = body;
     
     if (!url) {
       return NextResponse.json(
@@ -45,17 +44,20 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Supabase 인증 확인
-    const supabase = createClient();
-    const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+    // Get authenticated user or device user
+    const auth = await getAuthContext(request);
     
-    // 사용자 확인
-    const user = await userService.ensureUser(supabaseUser, deviceId || undefined);
+    if (!auth.isAuthenticated) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
     
     // 중복 확인
     const existing = await prisma.userRssFeed.findFirst({
       where: {
-        userId: user.id,
+        userId: auth.userId!,
         url
       }
     });
@@ -70,7 +72,7 @@ export async function POST(request: NextRequest) {
     // RSS 피드 추가
     const feed = await prisma.userRssFeed.create({
       data: {
-        userId: user.id,
+        userId: auth.userId!,
         name: name || new URL(url).hostname,
         url,
         category: category || 'general',
@@ -95,7 +97,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { feedId, name, enabled, category, deviceId } = body;
+    const { feedId, name, enabled, category } = body;
     
     if (!feedId) {
       return NextResponse.json(
@@ -104,18 +106,21 @@ export async function PUT(request: NextRequest) {
       );
     }
     
-    // Supabase 인증 확인
-    const supabase = createClient();
-    const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+    // Get authenticated user or device user
+    const auth = await getAuthContext(request);
     
-    // 사용자 확인
-    const user = await userService.ensureUser(supabaseUser, deviceId || undefined);
+    if (!auth.isAuthenticated) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
     
     // 피드 소유권 확인
     const feed = await prisma.userRssFeed.findFirst({
       where: {
         id: feedId,
-        userId: user.id
+        userId: auth.userId!
       }
     });
     
@@ -154,7 +159,6 @@ export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const feedId = searchParams.get('feedId');
-    const deviceId = searchParams.get('deviceId');
     
     if (!feedId) {
       return NextResponse.json(
@@ -163,18 +167,21 @@ export async function DELETE(request: NextRequest) {
       );
     }
     
-    // Supabase 인증 확인
-    const supabase = createClient();
-    const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+    // Get authenticated user or device user
+    const auth = await getAuthContext(request);
     
-    // 사용자 확인
-    const user = await userService.ensureUser(supabaseUser, deviceId || undefined);
+    if (!auth.isAuthenticated) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
     
     // 피드 소유권 확인
     const feed = await prisma.userRssFeed.findFirst({
       where: {
         id: feedId,
-        userId: user.id
+        userId: auth.userId!
       }
     });
     

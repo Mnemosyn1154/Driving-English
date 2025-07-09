@@ -1,5 +1,5 @@
 import { prisma } from '../database/prisma';
-import { cacheGet, cacheSet } from '../cache/redis';
+import { cacheGet, cacheSet } from '../cache';
 import { newsQueue, processingQueue } from '../jobs/queue';
 import { Prisma } from '@prisma/client';
 

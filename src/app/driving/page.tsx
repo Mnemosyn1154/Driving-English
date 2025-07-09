@@ -4,9 +4,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { DrivingChatInterface } from '@/components/DrivingMode/DrivingChatInterface';
 import { WakeWordIndicator } from '@/components/DrivingMode/WakeWordIndicator';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
+import { withAuth } from '@/components/Auth/withAuth';
 import { useWakeWord } from '@/hooks/useWakeWord';
-import { AuthModal } from '@/components/Auth/AuthModal';
 import styles from './page.module.css';
 
 // Mock data for testing
@@ -41,10 +40,8 @@ const mockArticle = {
   ],
 };
 
-export default function DrivingModePage() {
+function DrivingModePage() {
   const router = useRouter();
-  const { user, loading } = useAuth();
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isWakeWordDetected, setIsWakeWordDetected] = useState(false);
@@ -72,27 +69,21 @@ export default function DrivingModePage() {
     },
   });
 
-  // 로그인 상태 확인
-  useEffect(() => {
-    const skipAuth = localStorage.getItem('skipAuth');
-    if (!loading && !user && !skipAuth) {
-      // 로그인되지 않은 경우 모달 표시
-      setShowAuthModal(true);
-    }
-  }, [user, loading]);
-  
   // Start wake word detection when ready
   useEffect(() => {
-    if (isWakeWordReady && enableWakeWord && !showAuthModal) {
+    if (isWakeWordReady && enableWakeWord) {
       startWakeWord();
     }
-    
+  }, [isWakeWordReady, enableWakeWord, startWakeWord]);
+  
+  // Clean up wake word detection on unmount
+  useEffect(() => {
     return () => {
       if (isWakeWordListening) {
         stopWakeWord();
       }
     };
-  }, [isWakeWordReady, enableWakeWord, showAuthModal, startWakeWord, stopWakeWord, isWakeWordListening]);
+  }, [isWakeWordListening, stopWakeWord]);
 
   // Handle voice commands
   const handleCommand = useCallback((command: string) => {
@@ -211,20 +202,9 @@ export default function DrivingModePage() {
         </button>
       </div>
 
-      <AuthModal 
-        isOpen={showAuthModal}
-        onClose={() => {
-          setShowAuthModal(false);
-          // 로그인하지 않고 닫으면 홈으로 이동
-          if (!user) {
-            router.push('/');
-          }
-        }}
-        onSuccess={() => {
-          setShowAuthModal(false);
-          // 로그인 성공 시 계속 진행
-        }}
-      />
     </div>
   );
 }
+
+// Export with authentication
+export default withAuth(DrivingModePage, { allowSkipAuth: true });

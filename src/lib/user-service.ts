@@ -3,7 +3,7 @@ import { User } from '@supabase/supabase-js';
 
 export const userService = {
   // Supabase Auth 사용자를 Prisma User로 매핑
-  async ensureUser(supabaseUser: User | null, deviceId?: string) {
+  async ensureUser(supabaseUser: User | null, deviceId?: string | null) {
     if (!supabaseUser && !deviceId) {
       throw new Error('Either supabaseUser or deviceId is required');
     }

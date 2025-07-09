@@ -1,28 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { userService } from '@/lib/user-service';
-import { createClient } from '@/lib/supabase-server';
+import { getAuthContext } from '@/lib/api-auth';
 import { rssParser } from '@/services/server/news/rssParser';
 
 // POST /api/rss/fetch - 사용자 RSS 피드에서 뉴스 수집
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { deviceId, feedId, forceUpdate = false } = body;
+    const { feedId, forceUpdate = false } = body;
     
-    // Supabase 인증 확인
-    const supabase = createClient();
-    const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+    // Get authenticated user or device user
+    const auth = await getAuthContext(request);
     
-    // 사용자 확인
-    const user = await userService.ensureUser(supabaseUser, deviceId || undefined);
+    if (!auth.isAuthenticated) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
     
     // 특정 피드만 처리하는 경우
     if (feedId) {
       const feed = await prisma.userRssFeed.findFirst({
         where: {
           id: feedId,
-          userId: user.id,
+          userId: auth.userId!,
           enabled: true
         }
       });
@@ -47,7 +49,7 @@ export async function POST(request: NextRequest) {
       }
       
       // RSS 피드 처리
-      const result = await rssParser.processFeed(feed.url, user.id);
+      const result = await rssParser.processFeed(feed.url, auth.userId!);
       
       // 마지막 수집 시간 업데이트
       await prisma.userRssFeed.update({
@@ -65,7 +67,7 @@ export async function POST(request: NextRequest) {
       // 사용자의 모든 활성 피드 처리
       const feeds = await prisma.userRssFeed.findMany({
         where: {
-          userId: user.id,
+          userId: auth.userId!,
           enabled: true
         }
       });
@@ -100,7 +102,7 @@ export async function POST(request: NextRequest) {
           }
           
           // RSS 피드 처리
-          const result = await rssParser.processFeed(feed.url, user.id);
+          const result = await rssParser.processFeed(feed.url, auth.userId!);
           totalProcessed += result.processed;
           
           if (result.errors.length > 0) {

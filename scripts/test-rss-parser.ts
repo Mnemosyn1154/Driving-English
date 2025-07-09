@@ -33,7 +33,7 @@ async function testRSSParser() {
     if (result.errors.length > 0) {
       console.log(`⚠️  Errors:`, result.errors);
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error:', error.message);
   }
 
@@ -50,7 +50,7 @@ async function testRSSParser() {
         console.log(`   ${index + 1}. ${error}`);
       });
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error:', error.message);
   }
 
@@ -62,7 +62,7 @@ async function testRSSParser() {
   try {
     const result = await rssParser.processFeed(testFeeds[3], testUserId);
     console.log(`✅ Processed ${result.processed} articles for user ${testUserId}`);
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error:', error.message);
   }
 

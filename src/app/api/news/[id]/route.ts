@@ -5,10 +5,10 @@ const articleStore = new Map<string, any>();
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const articleId = params.id;
+    const { id: articleId } = await params;
     
     // For now, return mock data
     // TODO: Implement database storage

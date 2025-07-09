@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { NewsService } from '@/services/server/news/newsService';
 import { isMockMode } from '@/lib/env';
 import { mockArticles } from '@/services/server/mock/mockData';
+import { initializeServices } from '@/services/server/startup';
 
 export async function GET(request: NextRequest) {
   try {
+    // Initialize services on first request
+    await initializeServices();
+    
     const searchParams = request.nextUrl.searchParams;
     
     // Use mock data if in mock mode

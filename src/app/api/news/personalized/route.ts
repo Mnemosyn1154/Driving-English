@@ -1,13 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { userService } from '@/lib/user-service';
-import { headers } from 'next/headers';
+import { getAuthContext } from '@/lib/api-auth';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.URL);
-    const userId = searchParams.get('userId');
-    const deviceId = searchParams.get('deviceId');
+    // Get authenticated user or device user
+    const auth = await getAuthContext(request);
     
     // 사용자 선호도 가져오기
     let preferences = {
@@ -16,10 +14,10 @@ export async function GET(request: Request) {
       keywords: [] as string[],
     };
 
-    if (userId) {
+    if (auth.isAuthenticated && auth.userId) {
       // DB에서 사용자 선호도 가져오기
       const user = await prisma.user.findUnique({
-        where: { id: userId },
+        where: { id: auth.userId },
         include: {
           preferences: true,
           keywords: {
@@ -39,11 +37,8 @@ export async function GET(request: Request) {
         
         preferences.keywords = user.keywords.map(k => k.keyword);
       }
-    } else if (deviceId) {
+    } else {
       // 로컬 스토리지에서 가져오기 (비로그인 사용자)
-      const headersList = headers();
-      const cookieHeader = headersList.get('cookie');
-      
       // 임시로 로컬 스토리지 대신 기본값 사용
       preferences = {
         categories: ['technology', 'business', 'science'],

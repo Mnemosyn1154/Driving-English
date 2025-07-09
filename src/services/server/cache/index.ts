@@ -4,32 +4,73 @@
 const USE_MEMORY_CACHE = process.env.USE_MEMORY_CACHE === 'true';
 const USE_SUPABASE_CACHE = !USE_MEMORY_CACHE && (process.env.USE_SUPABASE_CACHE === 'true' || !process.env.REDIS_URL);
 
-// Dynamic import based on configuration
-let cacheModule: any;
+// Lazy loading of cache module
+let cacheModule: any = null;
+let loadingPromise: Promise<any> | null = null;
 
-if (USE_MEMORY_CACHE) {
-  cacheModule = await import('./memoryCache');
-  console.log('Using Memory cache (development mode)');
-} else if (USE_SUPABASE_CACHE) {
-  cacheModule = await import('./supabaseCache');
-  console.log('Using Supabase cache');
-} else {
-  cacheModule = await import('./redis');
-  console.log('Using Redis cache');
+async function loadCacheModule() {
+  if (cacheModule) return cacheModule;
+  
+  if (!loadingPromise) {
+    loadingPromise = (async () => {
+      if (USE_MEMORY_CACHE) {
+        cacheModule = await import('./memoryCache');
+        console.log('Using Memory cache (development mode)');
+      } else if (USE_SUPABASE_CACHE) {
+        cacheModule = await import('./supabaseCache');
+        console.log('Using Supabase cache');
+      } else {
+        cacheModule = await import('./redis');
+        console.log('Using Redis cache');
+      }
+      return cacheModule;
+    })();
+  }
+  
+  return loadingPromise;
 }
 
-export const {
-  cacheGet,
-  cacheSet,
-  cacheDelete,
-  cacheExists,
-  cacheGetByPattern,
-  cacheDeleteByPattern
-} = cacheModule;
+// Export proxy functions that lazy-load the cache module
+export const cacheGet = async (key: string) => {
+  const module = await loadCacheModule();
+  return module.cacheGet(key);
+};
+
+export const cacheSet = async (key: string, value: string, expirationSeconds?: number) => {
+  const module = await loadCacheModule();
+  return module.cacheSet(key, value, expirationSeconds);
+};
+
+export const cacheDelete = async (key: string) => {
+  const module = await loadCacheModule();
+  return module.cacheDelete(key);
+};
+
+export const cacheExists = async (key: string) => {
+  const module = await loadCacheModule();
+  return module.cacheExists(key);
+};
+
+export const cacheGetByPattern = async (pattern: string) => {
+  const module = await loadCacheModule();
+  return module.cacheGetByPattern(pattern);
+};
+
+export const cacheDeleteByPattern = async (pattern: string) => {
+  const module = await loadCacheModule();
+  return module.cacheDeleteByPattern(pattern);
+};
 
 // Redis 전용 함수들 (Supabase 사용 시 no-op)
-export const getRedisClient = cacheModule.getRedisClient || (() => Promise.resolve(null));
-export const closeRedisClient = cacheModule.closeRedisClient || (() => Promise.resolve());
+export const getRedisClient = async () => {
+  const module = await loadCacheModule();
+  return module.getRedisClient ? module.getRedisClient() : null;
+};
+
+export const closeRedisClient = async () => {
+  const module = await loadCacheModule();
+  return module.closeRedisClient ? module.closeRedisClient() : undefined;
+};
 
 // 캐시 타입별 키 프리픽스
 export const CACHE_PREFIX = {

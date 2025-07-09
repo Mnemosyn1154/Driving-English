@@ -2,6 +2,12 @@
 
 운전 중 안전하게 영어를 학습할 수 있는 AI 기반 웹 서비스
 
+## 🚨 중요: ERR_CONNECTION_REFUSED 방지
+**개발 시작 전 반드시 [DEV_RULES.md](./DEV_RULES.md)를 읽어주세요!**
+- ❌ `http://localhost:3003` 사용 금지
+- ✅ `http://127.0.0.1:3003` 항상 사용
+- 📋 [완벽한 해결 가이드](./docs/ERR_CONNECTION_REFUSED_SOLUTION.md)
+
 ## 🚀 Quick Start
 
 ### 필수 요구사항
@@ -89,6 +95,22 @@ npm run worker
    - Bull 큐 기반 작업 처리
    - 30분마다 뉴스 자동 업데이트
    - 번역/음성 사전 생성
+
+## 🔐 인증 시스템
+
+Driving English는 유연한 인증 시스템을 제공합니다:
+
+### 인증 모드
+1. **정식 로그인**: 이메일/OAuth를 통한 전체 기능 이용
+2. **게스트 모드**: 로그인 없이 기본 기능 이용 가능
+
+### 주요 특징
+- Supabase Auth 기반 안전한 인증
+- 게스트 모드로 즉시 서비스 체험
+- 디바이스별 진행 상황 저장
+- API 레벨 인증 미들웨어
+
+자세한 내용은 [인증 시스템 가이드](./docs/authentication.md)를 참고하세요.
 
 ## 🛠 개발 명령어
 

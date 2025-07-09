@@ -26,10 +26,10 @@ export async function POST(request: NextRequest) {
       errors: result.errors,
       message: `Processed ${result.processed} articles${result.errors.length > 0 ? ` with ${result.errors.length} errors` : ''}`
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('RSS processing error:', error);
     return NextResponse.json(
-      { error: 'Failed to process RSS feed', details: error.message },
+      { error: 'Failed to process RSS feed', details: error?.message },
       { status: 500 }
     );
   }
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
       feeds,
       total: feeds.length
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching RSS feeds:', error);
     return NextResponse.json(
       { error: 'Failed to fetch RSS feeds' },
@@ -93,7 +93,7 @@ export async function PATCH(request: NextRequest) {
       success: true,
       feed: updated
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating RSS feed:', error);
     return NextResponse.json(
       { error: 'Failed to update RSS feed' },
@@ -126,7 +126,7 @@ export async function DELETE(request: NextRequest) {
       success: true,
       message: 'RSS feed deleted successfully'
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting RSS feed:', error);
     return NextResponse.json(
       { error: 'Failed to delete RSS feed' },

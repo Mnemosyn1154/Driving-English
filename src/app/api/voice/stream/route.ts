@@ -27,24 +27,4 @@ export async function GET(request: NextRequest) {
   });
 }
 
-// Initialize WebSocket server (called from server startup)
-export function initializeWebSocketServer(httpServer: Server) {
-  if (!wsServer) {
-    wsServer = new DrivingEnglishWebSocketServer(httpServer);
-    console.log('WebSocket server initialized');
-  }
-  return wsServer;
-}
-
-// Cleanup function
-export async function cleanupWebSocketServer() {
-  if (wsServer) {
-    await wsServer.shutdown();
-    wsServer = null;
-  }
-}
-
-// Export server instance for use in other API routes
-export function getWebSocketServer() {
-  return wsServer;
-}
+// Note: WebSocket server is handled separately in server.js

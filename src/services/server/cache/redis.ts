@@ -6,8 +6,23 @@ let redisClient: RedisClient | null = null;
 
 export async function getRedisClient(): Promise<RedisClient> {
   if (!redisClient) {
+    // Check if Redis should be used
+    if (!process.env.REDIS_URL || process.env.USE_SUPABASE_CACHE === 'true') {
+      throw new Error('Redis is disabled. Using Supabase cache instead.');
+    }
+
     redisClient = createClient({
-      url: process.env.REDIS_URL || 'redis://localhost:6379',
+      url: process.env.REDIS_URL,
+      socket: {
+        connectTimeout: 5000,
+        reconnectStrategy: (retries) => {
+          if (retries > 3) {
+            console.error('Redis connection failed after 3 retries');
+            return new Error('Redis connection failed');
+          }
+          return Math.min(retries * 100, 3000);
+        }
+      }
     });
 
     redisClient.on('error', (err) => console.error('Redis Client Error', err));

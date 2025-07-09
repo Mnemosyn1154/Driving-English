@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { userService } from '@/lib/user-service';
-import { createClient } from '@/lib/supabase-server';
+import { getAuthContext } from '@/lib/api-auth';
 
 interface BatchFeedInput {
   name: string;
@@ -13,7 +12,7 @@ interface BatchFeedInput {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { feeds, deviceId } = body;
+    const { feeds } = body;
     
     if (!feeds || !Array.isArray(feeds) || feeds.length === 0) {
       return NextResponse.json(
@@ -30,12 +29,15 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Supabase 인증 확인
-    const supabase = createClient();
-    const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+    // Get authenticated user or device user
+    const auth = await getAuthContext(request);
     
-    // 사용자 확인
-    const user = await userService.ensureUser(supabaseUser, deviceId || undefined);
+    if (!auth.isAuthenticated) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
     
     const results = {
       added: [] as any[],
@@ -55,7 +57,7 @@ export async function POST(request: NextRequest) {
         // 중복 확인
         const existing = await prisma.userRssFeed.findFirst({
           where: {
-            userId: user.id,
+            userId: auth.userId!,
             url: feedInput.url
           }
         });
@@ -72,7 +74,7 @@ export async function POST(request: NextRequest) {
         // RSS 피드 추가
         const feed = await prisma.userRssFeed.create({
           data: {
-            userId: user.id,
+            userId: auth.userId!,
             name: feedInput.name || new URL(feedInput.url).hostname,
             url: feedInput.url,
             category: feedInput.category || 'general',
@@ -90,14 +92,29 @@ export async function POST(request: NextRequest) {
     // 추가된 피드들의 뉴스 수집 요청 (백그라운드)
     if (results.added.length > 0) {
       // 각 피드별로 수집 작업 시작
+      // Pass authentication headers for internal API calls
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+      
+      // Pass device ID if it's skipAuth
+      if (auth.isSkipAuth && auth.deviceId) {
+        headers['x-device-id'] = auth.deviceId;
+      }
+      
+      // Pass cookies for real auth
+      const cookieHeader = request.headers.get('cookie');
+      if (cookieHeader) {
+        headers['cookie'] = cookieHeader;
+      }
+      
       Promise.all(
         results.added.map(feed =>
           fetch(new URL('/api/rss/fetch', request.url).toString(), {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify({ 
-              feedId: feed.id,
-              deviceId 
+              feedId: feed.id
             })
           })
         )

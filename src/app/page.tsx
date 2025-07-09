@@ -10,7 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useState, useEffect } from 'react';
 
 export default function Home() {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, signOut, isAuthenticated } = useAuth();
   const router = useRouter();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showNewsSelector, setShowNewsSelector] = useState(false);
@@ -100,7 +100,7 @@ export default function Home() {
         <button 
           className={styles.primaryButton}
           onClick={() => {
-            if (user || localStorage.getItem('skipAuth') === 'true') {
+            if (isAuthenticated) {
               router.push('/learn');
             } else {
               setShowAuthModal(true);
