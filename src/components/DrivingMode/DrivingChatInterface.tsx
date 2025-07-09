@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
+import { useHybridSpeechRecognition } from '@/hooks/useHybridSpeechRecognition';
 import styles from './DrivingChatInterface.module.css';
 
 // Generate unique IDs for messages
@@ -61,17 +61,55 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Speech recognition
+  // Hybrid speech recognition
   const {
-    transcript,
-    interimTranscript,
-    startListening,
-    stopListening,
-    resetTranscript,
-    error: speechError,
-    isSupported,
-    isListening
-  } = useSpeechRecognition('ko-KR');
+    isRecording,
+    status,
+    lastTranscript,
+    lastIntent,
+    lastError,
+    startRecording,
+    stopRecording,
+    clearError,
+  } = useHybridSpeechRecognition({
+    onCommand: (command, transcript) => {
+      console.log('Command detected:', command, transcript);
+      // Handle direct commands
+      handleVoiceCommand(command);
+      
+      // Add user message
+      const userMessage: ChatMessage = {
+        id: generateMessageId(),
+        type: 'user',
+        content: transcript,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, userMessage]);
+    },
+    onGeminiResponse: (result) => {
+      console.log('Gemini response:', result);
+      // Add user message
+      const userMessage: ChatMessage = {
+        id: generateMessageId(),
+        type: 'user',
+        content: result.transcription,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, userMessage]);
+      
+      // Add AI response
+      const aiMessage: ChatMessage = {
+        id: generateMessageId(),
+        type: 'assistant',
+        content: result.response,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, aiMessage]);
+    },
+    onError: (error) => {
+      console.error('Voice error:', error);
+    },
+  });
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -92,6 +130,39 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
       setMessages(prev => [...prev, sentenceMessage]);
     }
   }, [currentSentence]);
+
+  // Handle voice command from hybrid recognition
+  const handleVoiceCommand = (command: string) => {
+    // Map STT commands to navigation commands
+    const commandMap: { [key: string]: string } = {
+      'NEXT_NEWS': 'next',
+      'PREV_NEWS': 'previous',
+      'PAUSE': 'pause',
+      'RESUME': 'play',
+      'REPEAT': 'repeat',
+      'EXIT': 'exit',
+      'RESTART': 'restart',
+      'SPEED_UP': 'speed_up',
+      'SPEED_DOWN': 'speed_down',
+      'VOLUME_UP': 'volume_up',
+      'VOLUME_DOWN': 'volume_down',
+      'TRANSLATE': 'translate',
+      'EXPLAIN': 'explain',
+      'SIMPLIFY': 'simplify',
+    };
+
+    const mappedCommand = commandMap[command] || command.toLowerCase();
+    onCommand(mappedCommand);
+    
+    // Add system message for command feedback
+    const commandMessage: ChatMessage = {
+      id: generateMessageId(),
+      type: 'system',
+      content: `명령 실행: ${mappedCommand}`,
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, commandMessage]);
+  };
 
   // Process command and get response
   const processCommand = async (text: string): Promise<{ response: string; newsResults?: NewsSearchResult[] }> => {
@@ -223,35 +294,20 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
     return { response, newsResults };
   };
 
-  // Handle speech recognition result
+  // Handle error display
   useEffect(() => {
-    if (transcript && transcript.trim()) {
-      // Add user message
-      const userMessage: ChatMessage = {
+    if (lastError) {
+      console.error('Voice recognition error:', lastError);
+      // Optionally show error to user
+      const errorMessage: ChatMessage = {
         id: generateMessageId(),
-        type: 'user',
-        content: transcript,
+        type: 'system',
+        content: `음성 인식 오류: ${lastError.message}`,
         timestamp: new Date()
       };
-      setMessages(prev => [...prev, userMessage]);
-
-      // Process and respond
-      setIsProcessing(true);
-      processCommand(transcript).then(({ response, newsResults }) => {
-        const aiMessage: ChatMessage = {
-          id: generateMessageId(),
-          type: 'assistant',
-          content: response,
-          timestamp: new Date(),
-          newsResults
-        };
-        setMessages(prev => [...prev, aiMessage]);
-        setIsProcessing(false);
-      });
-
-      resetTranscript();
+      setMessages(prev => [...prev, errorMessage]);
     }
-  }, [transcript, resetTranscript, onCommand]);
+  }, [lastError]);
 
   // Handle text input
   const handleSubmit = (e: React.FormEvent) => {
@@ -281,16 +337,19 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
         };
         setMessages(prev => [...prev, aiMessage]);
         setIsProcessing(false);
+      }).catch(error => {
+        console.error('Command processing error:', error);
+        setIsProcessing(false);
       });
     }
   };
 
   // Toggle voice recognition
   const toggleVoice = () => {
-    if (isListening) {
-      stopListening();
+    if (isRecording) {
+      stopRecording();
     } else {
-      startListening();
+      startRecording();
     }
   };
 
@@ -312,6 +371,13 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
         <h1>Driving English</h1>
         <div className={styles.status}>
           {isPlaying ? '🎵 재생 중' : '⏸️ 일시정지'}
+          {status !== 'idle' && status !== 'success' && (
+            <span className={styles.processingStatus}>
+              {status === 'recording' && ' 🎤 녹음 중'}
+              {status === 'processing_stt' && ' 🔍 음성 분석 중'}
+              {status === 'processing_gemini' && ' 🤖 AI 처리 중'}
+            </span>
+          )}
         </div>
       </div>
 
@@ -388,10 +454,10 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
             </div>
           </div>
         )}
-        {isListening && interimTranscript && (
+        {isRecording && lastTranscript && (
           <div className={`${styles.message} ${styles.user} ${styles.interim}`}>
             <div className={styles.messageContent}>
-              <div className={styles.messageText}>{interimTranscript}</div>
+              <div className={styles.messageText}>{lastTranscript}</div>
             </div>
           </div>
         )}
@@ -402,10 +468,10 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
       <form className={styles.inputContainer} onSubmit={handleSubmit}>
         <button
           type="button"
-          className={`${styles.voiceButton} ${isListening ? styles.listening : ''}`}
+          className={`${styles.voiceButton} ${isRecording ? styles.listening : ''}`}
           onClick={toggleVoice}
-          disabled={!isSupported}
-          aria-label={isListening ? '음성 인식 중지' : '음성 인식 시작'}
+          disabled={status === 'processing_stt' || status === 'processing_gemini'}
+          aria-label={isRecording ? '음성 인식 중지' : '음성 인식 시작'}
         >
           <svg viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
@@ -417,14 +483,14 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
           type="text"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
-          placeholder={isListening ? '듣는 중...' : '메시지를 입력하세요...'}
+          placeholder={isRecording ? '듣는 중...' : '메시지를 입력하세요...'}
           className={styles.input}
-          disabled={isProcessing || isListening}
+          disabled={isProcessing || isRecording}
         />
         <button
           type="submit"
           className={styles.sendButton}
-          disabled={!inputText.trim() || isProcessing || isListening}
+          disabled={!inputText.trim() || isProcessing || isRecording}
           aria-label="메시지 전송"
         >
           <svg viewBox="0 0 24 24" fill="currentColor">
