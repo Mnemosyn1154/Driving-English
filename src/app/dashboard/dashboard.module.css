@@ -39,7 +39,15 @@
 .headerContent {
   max-width: 1200px;
   margin: 0 auto;
-  text-align: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 30px;
+}
+
+.headerText {
+  flex: 1;
 }
 
 .header h1 {
@@ -54,6 +62,23 @@
   opacity: 0.9;
 }
 
+.startLearningButton {
+  padding: 14px 32px;
+  background: white;
+  color: #667eea;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.startLearningButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
 
 /* 그리드 레이아웃 */
 .grid {
@@ -98,7 +123,17 @@
   }
   
   .headerContent {
+    flex-direction: column;
+    align-items: stretch;
     text-align: center;
+  }
+  
+  .headerText {
+    margin-bottom: 20px;
+  }
+  
+  .startLearningButton {
+    width: 100%;
   }
   
   .grid {
