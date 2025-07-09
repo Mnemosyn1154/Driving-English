@@ -1,162 +1,342 @@
-'use client';
+/**
+ * Wake Word Detection Hook
+ * Provides easy integration of wake word detection in components
+ */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { WakeWordDetector, WakeWordConfig, WakeWordEvent } from '@/services/client/wakeword/detector';
+import { WakeWordDetector, WakeWordConfig } from '@/services/audio/wakeWord';
 
-interface UseWakeWordOptions {
-  wakeWords?: string[];
-  language?: string;
+export interface UseWakeWordOptions {
+  wakeWord?: string;
+  threshold?: number;
   autoStart?: boolean;
-  onDetected?: (event: WakeWordEvent) => void;
+  cooldownPeriod?: number;
+  onDetected?: () => void;
   onError?: (error: Error) => void;
 }
 
-interface UseWakeWordReturn {
+export interface UseWakeWordReturn {
   isListening: boolean;
-  isSupported: boolean;
-  lastDetection: {
-    wakeWord: string;
-    confidence: number;
-    timestamp: number;
-  } | null;
+  isInitialized: boolean;
+  lastDetectionTime: number | null;
+  error: Error | null;
   start: () => Promise<void>;
   stop: () => void;
-  updateWakeWords: (wakeWords: string[]) => void;
-  error: Error | null;
+  reset: () => void;
 }
-
-const DEFAULT_WAKE_WORDS = ['헤이 드라이빙', 'hey driving', '드라이빙', 'driving'];
 
 export function useWakeWord(options: UseWakeWordOptions = {}): UseWakeWordReturn {
   const {
-    wakeWords = DEFAULT_WAKE_WORDS,
-    language = 'ko-KR',
+    wakeWord = '헤이 드라이빙',
+    threshold = 0.85,
     autoStart = false,
+    cooldownPeriod = 2000,
     onDetected,
     onError,
   } = options;
 
   const [isListening, setIsListening] = useState(false);
-  const [isSupported, setIsSupported] = useState(false);
-  const [lastDetection, setLastDetection] = useState<UseWakeWordReturn['lastDetection']>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [lastDetectionTime, setLastDetectionTime] = useState<number | null>(null);
   const [error, setError] = useState<Error | null>(null);
 
   const detectorRef = useRef<WakeWordDetector | null>(null);
-  const isInitializedRef = useRef(false);
+  const cooldownTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Initialize detector
   useEffect(() => {
-    if (isInitializedRef.current) return;
-    isInitializedRef.current = true;
+    const initializeDetector = async () => {
+      try {
+        const config: WakeWordConfig = {
+          wakeWord,
+          threshold,
+          onDetected: handleDetection,
+          onReady: () => {
+            setIsInitialized(true);
+            setError(null);
+          },
+          onError: (err) => {
+            setError(err);
+            if (onError) onError(err);
+          },
+        };
 
-    // Check support
-    const supported = WakeWordDetector.isSupported();
-    setIsSupported(supported);
+        const detector = new WakeWordDetector(config);
+        await detector.initialize();
+        detectorRef.current = detector;
 
-    if (!supported) {
-      const err = new Error('Wake word detection is not supported in this browser');
-      setError(err);
-      onError?.(err);
-      return;
-    }
-
-    // Create detector
-    const config: WakeWordConfig = {
-      wakeWords,
-      language,
-      continuous: true,
-      interimResults: true,
-      sensitivity: 0.7,
+        // Auto-start if requested
+        if (autoStart) {
+          await detector.startListening();
+          setIsListening(true);
+        }
+      } catch (err) {
+        const error = err as Error;
+        setError(error);
+        if (onError) onError(error);
+      }
     };
 
-    const detector = new WakeWordDetector(config);
-
-    // Set up event handlers
-    detector.on('detected', (event) => {
-      const detection = {
-        wakeWord: event.data.wakeWord,
-        confidence: event.data.confidence,
-        timestamp: Date.now(),
-      };
-      
-      setLastDetection(detection);
-      onDetected?.(event);
-      
-      // Vibrate on detection (if supported)
-      if ('vibrate' in navigator) {
-        navigator.vibrate(200);
-      }
-    });
-
-    detector.on('listening', () => {
-      setIsListening(true);
-    });
-
-    detector.on('stopped', () => {
-      setIsListening(false);
-    });
-
-    detector.on('error', (event) => {
-      const err = new Error(event.data.error || 'Wake word detection error');
-      setError(err);
-      onError?.(err);
-    });
-
-    detectorRef.current = detector;
-
-    // Auto-start if requested
-    if (autoStart) {
-      detector.start().catch((err) => {
-        setError(err);
-        onError?.(err);
-      });
-    }
+    initializeDetector();
 
     // Cleanup
     return () => {
-      detector.stop();
-      detectorRef.current = null;
+      if (detectorRef.current) {
+        detectorRef.current.destroy();
+        detectorRef.current = null;
+      }
+      if (cooldownTimerRef.current) {
+        clearTimeout(cooldownTimerRef.current);
+      }
     };
-  }, []); // Empty deps, only run once
+  }, [wakeWord, threshold]);
 
-  // Start listening
+  /**
+   * Handle wake word detection
+   */
+  const handleDetection = useCallback(() => {
+    const now = Date.now();
+    
+    // Check if we're in cooldown period
+    if (lastDetectionTime && now - lastDetectionTime < cooldownPeriod) {
+      return;
+    }
+
+    setLastDetectionTime(now);
+    
+    // Notify parent component
+    if (onDetected) {
+      onDetected();
+    }
+
+    // Set cooldown timer
+    if (cooldownTimerRef.current) {
+      clearTimeout(cooldownTimerRef.current);
+    }
+    
+    cooldownTimerRef.current = setTimeout(() => {
+      // Cooldown period ended
+      cooldownTimerRef.current = null;
+    }, cooldownPeriod);
+  }, [lastDetectionTime, cooldownPeriod, onDetected]);
+
+  /**
+   * Start listening for wake word
+   */
   const start = useCallback(async () => {
-    if (!detectorRef.current) {
-      throw new Error('Wake word detector not initialized');
+    if (!detectorRef.current || !isInitialized || isListening) {
+      return;
     }
 
     try {
+      await detectorRef.current.startListening();
+      setIsListening(true);
       setError(null);
-      await detectorRef.current.start();
     } catch (err) {
       const error = err as Error;
       setError(error);
-      onError?.(error);
-      throw error;
+      if (onError) onError(error);
     }
-  }, [onError]);
+  }, [isInitialized, isListening, onError]);
 
-  // Stop listening
+  /**
+   * Stop listening for wake word
+   */
   const stop = useCallback(() => {
-    if (detectorRef.current) {
-      detectorRef.current.stop();
+    if (!detectorRef.current || !isListening) {
+      return;
     }
-  }, []);
 
-  // Update wake words
-  const updateWakeWords = useCallback((newWakeWords: string[]) => {
-    if (detectorRef.current) {
-      detectorRef.current.updateConfig({ wakeWords: newWakeWords });
+    detectorRef.current.stopListening();
+    setIsListening(false);
+  }, [isListening]);
+
+  /**
+   * Reset detection state
+   */
+  const reset = useCallback(() => {
+    setLastDetectionTime(null);
+    setError(null);
+    
+    if (cooldownTimerRef.current) {
+      clearTimeout(cooldownTimerRef.current);
+      cooldownTimerRef.current = null;
     }
   }, []);
 
   return {
     isListening,
-    isSupported,
-    lastDetection,
+    isInitialized,
+    lastDetectionTime,
+    error,
     start,
     stop,
-    updateWakeWords,
-    error,
+    reset,
+  };
+}
+
+/**
+ * Wake Word Training Hook
+ * For collecting samples and training custom wake words
+ */
+export interface UseWakeWordTrainingReturn {
+  isRecording: boolean;
+  recordingProgress: number;
+  samples: Array<{ audio: Float32Array; label: string }>;
+  startRecording: (label: string) => void;
+  stopRecording: () => void;
+  clearSamples: () => void;
+  trainModel: () => Promise<void>;
+  saveModel: () => Promise<void>;
+}
+
+export function useWakeWordTraining(): UseWakeWordTrainingReturn {
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingProgress, setRecordingProgress] = useState(0);
+  const [samples, setSamples] = useState<Array<{ audio: Float32Array; label: string }>>([]);
+
+  const recordingLabelRef = useRef<string>('');
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const processorRef = useRef<ScriptProcessorNode | null>(null);
+  const recordingDataRef = useRef<Float32Array[]>([]);
+
+  /**
+   * Start recording audio sample
+   */
+  const startRecording = useCallback(async (label: string) => {
+    try {
+      recordingLabelRef.current = label;
+      recordingDataRef.current = [];
+      
+      // Get microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
+          sampleRate: 16000,
+        },
+      });
+      
+      streamRef.current = stream;
+      
+      // Create audio context
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({
+        sampleRate: 16000,
+      });
+      audioContextRef.current = audioContext;
+      
+      // Create processor
+      const source = audioContext.createMediaStreamSource(stream);
+      const processor = audioContext.createScriptProcessor(1024, 1, 1);
+      
+      processor.onaudioprocess = (e) => {
+        const inputData = e.inputBuffer.getChannelData(0);
+        recordingDataRef.current.push(new Float32Array(inputData));
+        
+        // Update progress (assume 3-second recording)
+        const duration = recordingDataRef.current.length * 1024 / 16000;
+        setRecordingProgress(Math.min(duration / 3, 1));
+        
+        // Auto-stop after 3 seconds
+        if (duration >= 3) {
+          stopRecording();
+        }
+      };
+      
+      source.connect(processor);
+      processor.connect(audioContext.destination);
+      processorRef.current = processor;
+      
+      setIsRecording(true);
+    } catch (err) {
+      console.error('Failed to start recording:', err);
+    }
+  }, []);
+
+  /**
+   * Stop recording and save sample
+   */
+  const stopRecording = useCallback(() => {
+    if (!isRecording) return;
+    
+    // Combine audio chunks
+    const totalLength = recordingDataRef.current.reduce((sum, chunk) => sum + chunk.length, 0);
+    const combinedAudio = new Float32Array(totalLength);
+    let offset = 0;
+    
+    for (const chunk of recordingDataRef.current) {
+      combinedAudio.set(chunk, offset);
+      offset += chunk.length;
+    }
+    
+    // Save sample
+    setSamples(prev => [...prev, {
+      audio: combinedAudio,
+      label: recordingLabelRef.current,
+    }]);
+    
+    // Clean up
+    if (processorRef.current) {
+      processorRef.current.disconnect();
+      processorRef.current = null;
+    }
+    
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    
+    setIsRecording(false);
+    setRecordingProgress(0);
+  }, [isRecording]);
+
+  /**
+   * Clear all samples
+   */
+  const clearSamples = useCallback(() => {
+    setSamples([]);
+  }, []);
+
+  /**
+   * Train model with collected samples
+   */
+  const trainModel = useCallback(async () => {
+    // This would use TensorFlow.js transfer learning
+    // to train a custom wake word model
+    console.log('Training model with', samples.length, 'samples');
+    
+    // Placeholder for actual training logic
+    return new Promise<void>((resolve) => {
+      setTimeout(resolve, 2000);
+    });
+  }, [samples]);
+
+  /**
+   * Save trained model
+   */
+  const saveModel = useCallback(async () => {
+    // Save model to IndexedDB or server
+    console.log('Saving trained model');
+    
+    // Placeholder for actual save logic
+    return new Promise<void>((resolve) => {
+      setTimeout(resolve, 1000);
+    });
+  }, []);
+
+  return {
+    isRecording,
+    recordingProgress,
+    samples,
+    startRecording,
+    stopRecording,
+    clearSamples,
+    trainModel,
+    saveModel,
   };
 }

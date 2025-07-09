@@ -6,19 +6,55 @@
   background: #000;
 }
 
-.exitButton {
+.controlBar {
   position: fixed;
-  top: 16px;
-  right: 70px;
-  width: 44px;
-  height: 44px;
-  border-radius: 22px;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+  z-index: 1001;
+}
+
+.controlButton {
+  width: 48px;
+  height: 48px;
+  border-radius: 24px;
   background: rgba(255, 255, 255, 0.1);
   border: 2px solid rgba(255, 255, 255, 0.2);
   color: white;
   cursor: pointer;
   transition: all 0.3s ease;
-  z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+}
+
+.controlButton.active {
+  background: rgba(59, 130, 246, 0.3);
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+.controlButton:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.controlButton svg {
+  width: 24px;
+  height: 24px;
+}
+
+.exitButton {
+  width: 48px;
+  height: 48px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;

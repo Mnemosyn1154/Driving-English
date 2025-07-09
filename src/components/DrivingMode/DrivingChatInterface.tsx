@@ -33,12 +33,14 @@ interface DrivingChatInterfaceProps {
   };
   onCommand: (command: string) => void;
   isPlaying: boolean;
+  isWakeWordDetected?: boolean;
 }
 
 export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
   currentSentence,
   onCommand,
-  isPlaying
+  isPlaying,
+  isWakeWordDetected = false
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
