@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
+import { useSTT } from '@/hooks/useSTT';
+import { useTTS } from '@/hooks/useTTS';
 import { ChatInterface, ChatMessage } from './ChatInterface';
 import styles from './VoiceControl.module.css';
 
@@ -23,17 +24,39 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   
-  // Use speech recognition
+  // Use enhanced STT with noise filtering
   const {
+    isListening: isSpeechListening,
     transcript,
     interimTranscript,
+    audioLevel,
+    error: speechError,
     startListening: startSpeechRecognition,
     stopListening: stopSpeechRecognition,
     resetTranscript,
-    error: speechError,
-    isSupported,
-    isListening: isSpeechListening
-  } = useSpeechRecognition('ko-KR');
+  } = useSTT({
+    provider: 'browser', // Start with browser, can switch to 'google' later
+    language: 'ko-KR',
+    continuous: true,
+    interimResults: true,
+    noiseFilter: true, // Enable noise filtering for driving
+    speechContexts: [
+      {
+        phrases: ['다음', '이전', '반복', '일시정지', '재생', '채팅', '뉴스'],
+        boost: 20,
+      },
+    ],
+  });
+
+  // Use TTS for voice responses
+  const {
+    synthesize,
+    isPlaying: isSpeaking,
+  } = useTTS({
+    language: 'ko',
+    speed: 1.1, // Slightly faster for driving
+    autoPlay: true,
+  });
 
   // Helper function to get command response
   const getCommandResponse = (text: string): string => {
@@ -76,55 +99,59 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({
       
       // Get response
       setIsProcessing(true);
-      setTimeout(() => {
-        const response = getCommandResponse(transcript);
-        const aiMessage: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          type: 'assistant',
-          content: response,
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, aiMessage]);
-        setIsProcessing(false);
-      }, 500);
+      const response = getCommandResponse(transcript);
+      const aiMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        type: 'assistant',
+        content: response,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, aiMessage]);
+      
+      // Speak the response
+      await synthesize(response);
+      setIsProcessing(false);
       
       resetTranscript();
     }
   }, [transcript, onTranscript, onCommand, resetTranscript]);
 
-  // Handle voice level animation
+  // Update voice level from STT audio level
   useEffect(() => {
-    if (isSpeechListening) {
-      const interval = setInterval(() => {
-        setVoiceLevel(Math.random() * 0.8 + 0.2);
-      }, 100);
-      return () => clearInterval(interval);
+    setVoiceLevel(audioLevel);
+  }, [audioLevel]);
+
+  // Update status based on speaking state
+  useEffect(() => {
+    if (isSpeaking) {
+      setStatus('speaking');
+    } else if (isSpeechListening) {
+      setStatus('listening');
+    } else if (isProcessing) {
+      setStatus('processing');
     } else {
-      setVoiceLevel(0);
+      setStatus('idle');
     }
-  }, [isSpeechListening]);
+  }, [isSpeaking, isSpeechListening, isProcessing]);
 
   // Handle voice toggle
   const handleVoiceToggle = useCallback(async () => {
-    if (!isSupported) {
-      alert('음성 인식이 지원되지 않는 브라우저입니다.');
-      return;
+    try {
+      if (isSpeechListening) {
+        stopSpeechRecognition();
+        setIsListening(false);
+      } else {
+        await startSpeechRecognition();
+        setIsListening(true);
+      }
+    } catch (err) {
+      console.error('Voice toggle error:', err);
+      alert('음성 인식을 시작할 수 없습니다. 마이크 권한을 확인해주세요.');
     }
-
-    if (isSpeechListening) {
-      setStatus('processing');
-      stopSpeechRecognition();
-      setIsListening(false);
-      setStatus('idle');
-    } else {
-      setStatus('listening');
-      await startSpeechRecognition();
-      setIsListening(true);
-    }
-  }, [isSpeechListening, startSpeechRecognition, stopSpeechRecognition, isSupported]);
+  }, [isSpeechListening, startSpeechRecognition, stopSpeechRecognition]);
 
   // Handle text message from chat
-  const handleSendMessage = useCallback((message: string) => {
+  const handleSendMessage = useCallback(async (message: string) => {
     // Add user message
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -139,17 +166,18 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({
     
     // Get response
     setIsProcessing(true);
-    setTimeout(() => {
-      const response = getCommandResponse(message);
-      const aiMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        type: 'assistant',
-        content: response,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, aiMessage]);
-      setIsProcessing(false);
-    }, 500);
+    const response = getCommandResponse(message);
+    const aiMessage: ChatMessage = {
+      id: (Date.now() + 1).toString(),
+      type: 'assistant',
+      content: response,
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, aiMessage]);
+    
+    // Speak the response
+    await synthesize(response);
+    setIsProcessing(false);
   }, [onTranscript, onCommand]);
 
   // Auto-stop listening after 10 seconds
@@ -196,10 +224,11 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({
           className={`${styles.voiceButton} ${styles[status]}`}
           onClick={handleVoiceToggle}
           aria-label={isListening ? '음성 인식 중지' : '음성 인식 시작'}
+          disabled={isSpeaking} // Disable while speaking
         >
           <div className={styles.micIcon}>
             {status === 'listening' && (
-              <div className={styles.pulseRing} style={{ transform: `scale(${1 + voiceLevel})` }} />
+              <div className={styles.pulseRing} style={{ transform: `scale(${1 + voiceLevel * 2})` }} />
             )}
             <svg viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
