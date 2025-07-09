@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { Header } from '@/components/Layout/Header/Header';
+import { Header } from '@/components/layout/Header/Header';
 import { NewsSelector } from '@/components/NewsSelector/NewsSelector';
 import styles from './settings.module.css';
 

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { Header } from '@/components/Layout/Header/Header';
+import { Header } from '@/components/layout/Header/Header';
 import { LearningStats } from '@/components/Dashboard/LearningStats/LearningStats';
 import { MyRSSFeeds } from '@/components/Dashboard/MyRSSFeeds/MyRSSFeeds';
 import { RecentArticles } from '@/components/Dashboard/RecentArticles/RecentArticles';
