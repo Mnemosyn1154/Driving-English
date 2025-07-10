@@ -10,7 +10,6 @@ export async function GET(request: NextRequest) {
     // 사용자 선호도 가져오기
     let preferences = {
       categories: [] as string[],
-      level: 3,
       keywords: [] as string[],
     };
 
@@ -28,8 +27,6 @@ export async function GET(request: NextRequest) {
       });
 
       if (user) {
-        preferences.level = user.preferredLevel;
-        
         const categoriesPref = user.preferences.find(p => p.key === 'categories');
         if (categoriesPref) {
           preferences.categories = JSON.parse(categoriesPref.value);
@@ -42,7 +39,6 @@ export async function GET(request: NextRequest) {
       // 임시로 로컬 스토리지 대신 기본값 사용
       preferences = {
         categories: ['technology', 'business', 'science'],
-        level: 3,
         keywords: []
       };
     }
@@ -54,12 +50,6 @@ export async function GET(request: NextRequest) {
           preferences.categories.length > 0 ? {
             category: { in: preferences.categories }
           } : {},
-          {
-            difficulty: {
-              gte: Math.max(1, preferences.level - 1),
-              lte: Math.min(5, preferences.level + 1)
-            }
-          },
           {
             publishedAt: {
               gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // 최근 7일
@@ -95,10 +85,6 @@ export async function GET(request: NextRequest) {
       // 최신성
       const ageInDays = (Date.now() - article.publishedAt.getTime()) / (1000 * 60 * 60 * 24);
       score += Math.max(0, 10 - ageInDays);
-      
-      // 난이도 일치도
-      const diffMatch = Math.abs(article.difficulty - preferences.level);
-      score += Math.max(0, 5 - diffMatch * 2);
       
       return { ...article, score };
     });

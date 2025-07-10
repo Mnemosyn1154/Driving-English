@@ -1,15 +1,14 @@
-export interface RecommendedFeed {
-  name: string;
-  url: string;
-  description: string;
-  language?: string;
-}
+// Re-export validated feeds as the main source
+export { 
+  RECOMMENDED_RSS_FEEDS, 
+  VALIDATED_RSS_FEEDS,
+  CATEGORY_LABELS,
+  type RecommendedFeed,
+  type CategoryFeeds
+} from './validated-rss-feeds';
 
-export interface CategoryFeeds {
-  [key: string]: RecommendedFeed[];
-}
-
-export const RECOMMENDED_RSS_FEEDS: CategoryFeeds = {
+// Legacy feeds kept for reference
+export const LEGACY_RECOMMENDED_RSS_FEEDS = {
   technology: [
     {
       name: 'TechCrunch',
@@ -226,16 +225,4 @@ export const RECOMMENDED_RSS_FEEDS: CategoryFeeds = {
       description: '국제 정치 뉴스',
     },
   ],
-};
-
-// 카테고리 이름 매핑
-export const CATEGORY_LABELS: { [key: string]: string } = {
-  technology: '기술',
-  business: '비즈니스',
-  world: '국제',
-  science: '과학',
-  health: '건강',
-  sports: '스포츠',
-  entertainment: '엔터테인먼트',
-  politics: '정치',
 };

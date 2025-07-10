@@ -1,36 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GeminiTranslator } from '@/services/server/translation/geminiTranslator';
-import { TranslationRequest } from '@/types/translation';
-
-const translator = new GeminiTranslator();
+import { translator } from '@/services/server/translation/geminiTranslator';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
-    // Validate request
-    if (!body.text || !body.type) {
+    const { text, texts, articleId, from = 'en', to = 'ko' } = body;
+
+    // Validate input
+    if (!text && !texts && !articleId) {
       return NextResponse.json(
-        { error: 'Missing required fields: text, type' },
+        { error: 'Either text, texts array, or articleId is required' },
         { status: 400 }
       );
     }
 
-    const translationRequest: TranslationRequest = {
-      id: body.id || `translation_${Date.now()}`,
-      text: body.text,
-      sourceLanguage: body.sourceLanguage || 'en',
-      targetLanguage: body.targetLanguage || 'ko',
-      type: body.type,
-      context: body.context,
-    };
+    // Single text translation
+    if (text) {
+      const result = await translator.translateText(text, { from, to });
+      return NextResponse.json({
+        success: true,
+        translation: result.translatedText,
+        cached: result.cached,
+      });
+    }
 
-    // Translate
-    const result = await translator.translate(translationRequest);
+    // Batch translation
+    if (texts && Array.isArray(texts)) {
+      const results = await translator.translateBatch(texts, { from, to });
+      return NextResponse.json({
+        success: true,
+        translations: results.map(r => ({
+          text: r.translatedText,
+          cached: r.cached,
+        })),
+      });
+    }
 
-    return NextResponse.json(result);
+    // Article translation
+    if (articleId) {
+      const result = await translator.translateArticle(articleId);
+      return NextResponse.json({
+        success: true,
+        article: result,
+      });
+    }
+
   } catch (error: any) {
-    console.error('Translation error:', error);
+    console.error('Translation API error:', error);
+    
+    if (error.message?.includes('API key')) {
+      return NextResponse.json(
+        { error: 'Google Cloud Translation API is not configured properly' },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
       { error: 'Translation failed', details: error.message },
       { status: 500 }
@@ -38,28 +62,19 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Batch translation endpoint
-export async function PUT(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const body = await request.json();
+    // Get translation statistics
+    const stats = await translator.getStatistics();
     
-    if (!body.requests || !Array.isArray(body.requests)) {
-      return NextResponse.json(
-        { error: 'Missing required field: requests (array)' },
-        { status: 400 }
-      );
-    }
-
-    const result = await translator.translateBatch({
-      requests: body.requests,
-      priority: body.priority,
+    return NextResponse.json({
+      success: true,
+      statistics: stats,
     });
-
-    return NextResponse.json(result);
   } catch (error: any) {
-    console.error('Batch translation error:', error);
+    console.error('Statistics error:', error);
     return NextResponse.json(
-      { error: 'Batch translation failed', details: error.message },
+      { error: 'Failed to get statistics', details: error.message },
       { status: 500 }
     );
   }

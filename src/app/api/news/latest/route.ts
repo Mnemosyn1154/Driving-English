@@ -44,7 +44,6 @@ export async function GET(request: NextRequest) {
     // Apply filters
     const filter: NewsFilter = {};
     if (category) filter.categories = [category as any];
-    if (difficulty) filter.difficulty = [difficulty as any];
     
     const filteredArticles = preprocessor.filterArticles(parsedArticles, filter);
 

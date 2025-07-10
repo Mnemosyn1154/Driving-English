@@ -6,10 +6,8 @@
 import { 
   Article, 
   Sentence, 
-  DifficultyLevel,
   ArticleMetadata,
 } from '@/types/news';
-import { COMMON_ENGLISH_WORDS, DIFFICULTY_THRESHOLDS } from '@/config/news-sources';
 import { v4 as uuidv4 } from 'uuid';
 
 export class NewsParser {
@@ -30,9 +28,6 @@ export class NewsParser {
     // Calculate word count
     const wordCount = this.calculateWordCount(cleanedContent);
     
-    // Calculate difficulty
-    const difficulty = this.calculateDifficulty(cleanedContent, sentences);
-    
     // Estimate reading time (average 150 words per minute)
     const estimatedReadTime = Math.ceil((wordCount / 150) * 60);
 
@@ -46,7 +41,6 @@ export class NewsParser {
       content: cleanedContent,
       sentences: sentences,
       metadata: rawArticle.metadata as ArticleMetadata,
-      difficulty,
       wordCount,
       estimatedReadTime,
       isProcessed: true,
@@ -121,7 +115,6 @@ export class NewsParser {
             id: uuidv4(),
             text: currentSentence.trim(),
             order: sentences.length,
-            difficulty: this.calculateSentenceDifficulty(currentSentence),
             keywords: this.extractKeywords(currentSentence),
           });
         }
@@ -185,7 +178,6 @@ export class NewsParser {
               id: uuidv4(),
               text: currentSentence.trim(),
               order: sentences.length,
-              difficulty: this.calculateSentenceDifficulty(currentSentence),
               keywords: this.extractKeywords(currentSentence),
             });
           }
@@ -215,67 +207,6 @@ export class NewsParser {
     return content.split(/\s+/).filter(word => word.length > 0).length;
   }
 
-  /**
-   * Calculate article difficulty
-   */
-  private calculateDifficulty(content: string, sentences: Sentence[]): DifficultyLevel {
-    const wordCount = this.calculateWordCount(content);
-    const words = content.toLowerCase().split(/\s+/);
-    const avgSentenceLength = sentences.length > 0 
-      ? sentences.reduce((sum, s) => sum + s.text.split(/\s+/).length, 0) / sentences.length 
-      : 0;
-    
-    // Calculate common word percentage
-    const commonWordCount = words.filter(word => COMMON_ENGLISH_WORDS.has(word)).length;
-    const commonWordPercentage = commonWordCount / words.length;
-    
-    // Check against thresholds
-    if (
-      wordCount <= DIFFICULTY_THRESHOLDS.beginner.maxWordCount &&
-      avgSentenceLength <= DIFFICULTY_THRESHOLDS.beginner.maxSentenceLength &&
-      commonWordPercentage >= DIFFICULTY_THRESHOLDS.beginner.commonWordPercentage
-    ) {
-      return 'beginner';
-    }
-    
-    if (
-      wordCount <= DIFFICULTY_THRESHOLDS.intermediate.maxWordCount &&
-      avgSentenceLength <= DIFFICULTY_THRESHOLDS.intermediate.maxSentenceLength &&
-      commonWordPercentage >= DIFFICULTY_THRESHOLDS.intermediate.commonWordPercentage
-    ) {
-      return 'intermediate';
-    }
-    
-    return 'advanced';
-  }
-
-  /**
-   * Calculate sentence difficulty
-   */
-  private calculateSentenceDifficulty(sentence: string): DifficultyLevel {
-    const words = sentence.toLowerCase().split(/\s+/);
-    const wordCount = words.length;
-    
-    // Calculate common word percentage
-    const commonWordCount = words.filter(word => COMMON_ENGLISH_WORDS.has(word)).length;
-    const commonWordPercentage = commonWordCount / words.length;
-    
-    if (
-      wordCount <= DIFFICULTY_THRESHOLDS.beginner.maxSentenceLength &&
-      commonWordPercentage >= DIFFICULTY_THRESHOLDS.beginner.commonWordPercentage
-    ) {
-      return 'beginner';
-    }
-    
-    if (
-      wordCount <= DIFFICULTY_THRESHOLDS.intermediate.maxSentenceLength &&
-      commonWordPercentage >= DIFFICULTY_THRESHOLDS.intermediate.commonWordPercentage
-    ) {
-      return 'intermediate';
-    }
-    
-    return 'advanced';
-  }
 
   /**
    * Extract keywords from text
@@ -284,12 +215,11 @@ export class NewsParser {
     const words = text.toLowerCase().split(/\s+/);
     const keywords: string[] = [];
     
-    // Simple keyword extraction: non-common words that are longer than 4 characters
+    // Simple keyword extraction: words that are longer than 4 characters
     for (const word of words) {
       const cleanWord = word.replace(/[^a-z0-9]/g, '');
       if (
         cleanWord.length > 4 &&
-        !COMMON_ENGLISH_WORDS.has(cleanWord) &&
         !keywords.includes(cleanWord)
       ) {
         keywords.push(cleanWord);

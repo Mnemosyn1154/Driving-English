@@ -1,0 +1,618 @@
+{
+  "timestamp": "2025-07-10T08:14:08.942Z",
+  "summary": {
+    "total": 52,
+    "successful": 36,
+    "redirected": 0,
+    "failed": 16,
+    "httpFeeds": 6
+  },
+  "results": [
+    {
+      "url": "http://feeds.bbci.co.uk/news/world/rss.xml",
+      "name": "BBC World News",
+      "category": "world",
+      "status": "success",
+      "isHttps": true,
+      "finalUrl": "https://feeds.bbci.co.uk/news/world/rss.xml",
+      "itemCount": 32,
+      "lastBuildDate": "Thu, 10 Jul 2025 08:12:40 GMT",
+      "responseTime": 2040
+    },
+    {
+      "url": "http://feeds.bbci.co.uk/news/business/rss.xml",
+      "name": "BBC Business News",
+      "category": "business",
+      "status": "success",
+      "isHttps": true,
+      "finalUrl": "https://feeds.bbci.co.uk/news/business/rss.xml",
+      "itemCount": 50,
+      "lastBuildDate": "Thu, 10 Jul 2025 08:12:46 GMT",
+      "responseTime": 1655
+    },
+    {
+      "url": "http://feeds.bbci.co.uk/news/technology/rss.xml",
+      "name": "BBC Technology News",
+      "category": "technology",
+      "status": "success",
+      "isHttps": true,
+      "finalUrl": "https://feeds.bbci.co.uk/news/technology/rss.xml",
+      "itemCount": 54,
+      "lastBuildDate": "Thu, 10 Jul 2025 08:12:35 GMT",
+      "responseTime": 1477
+    },
+    {
+      "url": "http://rss.cnn.com/rss/edition_world.rss",
+      "name": "CNN World News",
+      "category": "world",
+      "status": "success",
+      "isHttps": false,
+      "itemCount": 29,
+      "lastBuildDate": "Thu, 22 Aug 2024 15:32:30 GMT",
+      "responseTime": 1662
+    },
+    {
+      "url": "http://rss.cnn.com/rss/money_latest.rss",
+      "name": "CNN Business",
+      "category": "business",
+      "status": "success",
+      "isHttps": false,
+      "itemCount": 1,
+      "lastBuildDate": "Thu, 01 Nov 2018 16:50:27 EDT",
+      "responseTime": 1115
+    },
+    {
+      "url": "http://feeds.reuters.com/reuters/worldNews",
+      "name": "Reuters World News",
+      "category": "world",
+      "status": "error",
+      "isHttps": false,
+      "errorMessage": "getaddrinfo ENOTFOUND feeds.reuters.com",
+      "responseTime": 115
+    },
+    {
+      "url": "http://feeds.reuters.com/reuters/businessNews",
+      "name": "Reuters Business News",
+      "category": "business",
+      "status": "error",
+      "isHttps": false,
+      "errorMessage": "getaddrinfo ENOTFOUND feeds.reuters.com",
+      "responseTime": 3
+    },
+    {
+      "url": "http://feeds.reuters.com/reuters/technologyNews",
+      "name": "Reuters Technology News",
+      "category": "technology",
+      "status": "error",
+      "isHttps": false,
+      "errorMessage": "getaddrinfo ENOTFOUND feeds.reuters.com",
+      "responseTime": 2
+    },
+    {
+      "url": "https://www.theguardian.com/world/rss",
+      "name": "The Guardian World News",
+      "category": "world",
+      "status": "success",
+      "isHttps": true,
+      "itemCount": 45,
+      "lastBuildDate": "Thu, 10 Jul 2025 08:00:48 GMT",
+      "responseTime": 824
+    },
+    {
+      "url": "https://techcrunch.com/feed/",
+      "name": "TechCrunch",
+      "category": "technology",
+      "status": "success",
+      "isHttps": true,
+      "itemCount": 20,
+      "lastBuildDate": "Thu, 10 Jul 2025 07:09:29 +0000",
+      "responseTime": 805
+    },
+    {
+      "url": "https://www.theverge.com/rss/index.xml",
+      "name": "The Verge",
+      "category": "technology",
+      "status": "success",
+      "isHttps": true,
+      "itemCount": 10,
+      "lastBuildDate": "2025-07-10T05:50:29+00:00",
+      "responseTime": 891
+    },
+    {
+      "url": "http://feeds.nature.com/nature/rss/current",
+      "name": "Nature News",
+      "category": "science",
+      "status": "success",
+      "isHttps": true,
+      "finalUrl": "https://www.nature.com/nature.rss",
+      "itemCount": 75,
+      "responseTime": 918
+    },
+    {
+      "url": "https://techcrunch.com/feed/",
+      "name": "TechCrunch",
+      "category": "technology",
+      "status": "success",
+      "isHttps": true,
+      "itemCount": 20,
+      "lastBuildDate": "Thu, 10 Jul 2025 07:09:29 +0000",
+      "responseTime": 586
+    },
+    {
+      "url": "https://www.theverge.com/rss/index.xml",
+      "name": "The Verge",
+      "category": "technology",
+      "status": "success",
+      "isHttps": true,
+      "itemCount": 10,
+      "lastBuildDate": "2025-07-10T05:50:29+00:00",
+      "responseTime": 404
+    },
+    {
+      "url": "https://feeds.arstechnica.com/arstechnica/index",
+      "name": "Ars Technica",
+      "category": "technology",
+      "status": "success",
+      "isHttps": true,
+      "itemCount": 20,
+      "lastBuildDate": "Thu, 10 Jul 2025 01:42:31 +0000",
+      "responseTime": 1320
+    },
+    {
+      "url": "https://www.wired.com/feed/rss",
+      "name": "Wired",
+      "category": "technology",
+      "status": "success",
+      "isHttps": true,
+      "itemCount": 50,
+      "lastBuildDate": "Thu, 10 Jul 2025 08:10:24 +0000",
+      "responseTime": 557
+    },
+    {
+      "url": "https://www.technologyreview.com/feed/",
+      "name": "MIT Technology Review",
+      "category": "technology",
+      "status": "success",
+      "isHttps": true,
+      "itemCount": 10,
+      "lastBuildDate": "Wed, 09 Jul 2025 16:56:23 +0000",
+      "responseTime": 1324
+    },
+    {
+      "url": "https://feeds.reuters.com/reuters/businessNews",
+      "name": "Reuters Business",
+      "category": "business",
+      "status": "error",
+      "isHttps": true,
+      "errorMessage": "getaddrinfo ENOTFOUND feeds.reuters.com",
+      "responseTime": 4
+    },
+    {
+      "url": "https://feeds.bloomberg.com/markets/news.rss",
+      "name": "Bloomberg",
+      "category": "business",
+      "status": "success",
+      "isHttps": true,
+      "itemCount": 30,
+      "lastBuildDate": "Thu, 10 Jul 2025 08:12:40 GMT",
+      "responseTime": 3722
+    },
+    {
+      "url": "https://www.ft.com/?format=rss",
+      "name": "Financial Times",
+      "category": "business",
+      "status": "success",
+      "isHttps": true,
+      "finalUrl": "https://www.ft.com/rss/home/uk",
+      "itemCount": 8,
+      "lastBuildDate": "Thu, 10 Jul 2025 08:13:07 GMT",
+      "responseTime": 2879
+    },
+    {
+      "url": "https://feeds.hbr.org/harvardbusiness",
+      "name": "Harvard Business Review",
+      "category": "business",
+      "status": "error",
+      "isHttps": true,
+      "errorMessage": "Client network socket disconnected before secure TLS connection was established",
+      "responseTime": 597
+    },
+    {
+      "url": "https://www.forbes.com/real-time/feed2/",
+      "name": "Forbes",
+      "category": "business",
+      "status": "success",
+      "isHttps": true,
+      "itemCount": 25,
+      "responseTime": 878
+    },
+    {
+      "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
+      "name": "BBC World News",
+      "category": "world",
+      "status": "success",
+      "isHttps": true,
+      "itemCount": 32,
+      "lastBuildDate": "Thu, 10 Jul 2025 08:12:51 GMT",
+      "responseTime": 920
+    },
+    {
+      "url": "http://rss.cnn.com/rss/edition_world.rss",
+      "name": "CNN International",
+      "category": "world",
+      "status": "success",
+      "isHttps": false,
+      "itemCount": 29,
+      "lastBuildDate": "Thu, 22 Aug 2024 15:32:30 GMT",
+      "responseTime": 1471
+    },
+    {
+      "url": "https://feeds.reuters.com/Reuters/worldNews",
+      "name": "Reuters World",
+      "category": "world",
+      "status": "error",
+      "isHttps": true,
+      "errorMessage": "getaddrinfo ENOTFOUND feeds.reuters.com",
+      "responseTime": 4
+    },
+    {
+      "url": "https://www.theguardian.com/world/rss",
+      "name": "The Guardian International",
+      "category": "world",
+      "status": "success",
+      "isHttps": true,
+      "itemCount": 45,
+      "lastBuildDate": "Thu, 10 Jul 2025 08:00:48 GMT",
+      "responseTime": 611
+    },
+    {
+      "url": "https://www.aljazeera.com/xml/rss/all.xml",
+      "name": "Al Jazeera English",
+      "category": "world",
+      "status": "success",
+      "isHttps": true,
+      "itemCount": 25,
+      "lastBuildDate": "Thu, 10 Jul 2025 07:33:31 +0000",
+      "responseTime": 912
+    },
+    {
+      "url": "https://www.sciencedaily.com/rss/all.xml",
+      "name": "Science Daily",
+      "category": "science",
+      "status": "success",
+      "isHttps": true,
+      "itemCount": 60,
+      "lastBuildDate": "Thu, 10 Jul 2025 02:11:15 EDT",
+      "responseTime": 2003
+    },
+    {
+      "url": "https://www.nature.com/nature.rss",
+      "name": "Nature News",
+      "category": "science",
+      "status": "success",
+      "isHttps": true,
+      "itemCount": 75,
+      "responseTime": 674
+    },
+    {
+      "url": "https://rss.sciam.com/ScientificAmerican-Global",
+      "name": "Scientific American",
+      "category": "science",
+      "status": "error",
+      "isHttps": true,
+      "errorMessage": "Client network socket disconnected before secure TLS connection was established",
+      "responseTime": 554
+    },
+    {
+      "url": "https://www.newscientist.com/feed/home",
+      "name": "New Scientist",
+      "category": "science",
+      "status": "success",
+      "isHttps": true,
+      "finalUrl": "https://www.newscientist.com/feed/home/",
+      "itemCount": 100,
+      "responseTime": 1815
+    },
+    {
+      "url": "https://www.nasa.gov/rss/dyn/breaking_news.rss",
+      "name": "NASA News",
+      "category": "science",
+      "status": "success",
+      "isHttps": true,
+      "finalUrl": "https://www.nasa.gov/news-release/feed/",
+      "itemCount": 10,
+      "lastBuildDate": "Wed, 09 Jul 2025 20:15:40 +0000",
+      "responseTime": 1826
+    },
+    {
+      "url": "https://rssfeeds.webmd.com/rss/rss.aspx?RSSSource=RSS_PUBLIC",
+      "name": "WebMD Health News",
+      "category": "health",
+      "status": "error",
+      "isHttps": true,
+      "errorMessage": "Status code 500",
+      "responseTime": 9200
+    },
+    {
+      "url": "https://newsnetwork.mayoclinic.org/feed/",
+      "name": "Mayo Clinic News",
+      "category": "health",
+      "status": "error",
+      "isHttps": true,
+      "errorMessage": "Status code 403",
+      "responseTime": 874
+    },
+    {
+      "url": "https://www.medicalnewstoday.com/rss/featurednews.xml",
+      "name": "Medical News Today",
+      "category": "health",
+      "status": "error",
+      "isHttps": true,
+      "errorMessage": "Status code 403",
+      "responseTime": 1669
+    },
+    {
+      "url": "https://www.health.harvard.edu/blog/feed",
+      "name": "Harvard Health",
+      "category": "health",
+      "status": "error",
+      "isHttps": true,
+      "errorMessage": "Status code 404",
+      "responseTime": 3112
+    },
+    {
+      "url": "https://www.who.int/rss-feeds/news-english.xml",
+      "name": "WHO News",
+      "category": "health",
+      "status": "success",
+      "isHttps": true,
+      "itemCount": 25,
+      "responseTime": 977
+    },
+    {
+      "url": "https://www.espn.com/espn/rss/news",
+      "name": "ESPN",
+      "category": "sports",
+      "status": "success",
+      "isHttps": true,
+      "itemCount": 50,
+      "lastBuildDate": "Thu, 10 Jul 2025 08:10:10 GMT",
+      "responseTime": 1428
+    },
+    {
+      "url": "https://feeds.bbci.co.uk/sport/rss.xml",
+      "name": "BBC Sport",
+      "category": "sports",
+      "status": "success",
+      "isHttps": true,
+      "itemCount": 67,
+      "lastBuildDate": "Thu, 10 Jul 2025 08:13:29 GMT",
+      "responseTime": 1589
+    },
+    {
+      "url": "https://theathletic.com/rss/",
+      "name": "The Athletic",
+      "category": "sports",
+      "status": "error",
+      "isHttps": true,
+      "finalUrl": "https://www.nytimes.com/athletic/rss/",
+      "errorMessage": "Status code 404",
+      "responseTime": 3573
+    },
+    {
+      "url": "https://www.skysports.com/rss/12040",
+      "name": "Sky Sports",
+      "category": "sports",
+      "status": "success",
+      "isHttps": true,
+      "itemCount": 20,
+      "lastBuildDate": "Thu, 10 Jul 2025 09:13:00 BST",
+      "responseTime": 967
+    },
+    {
+      "url": "https://www.si.com/rss/si_topstories.rss",
+      "name": "Sports Illustrated",
+      "category": "sports",
+      "status": "error",
+      "isHttps": true,
+      "errorMessage": "Status code 404",
+      "responseTime": 1781
+    },
+    {
+      "url": "https://variety.com/feed/",
+      "name": "Variety",
+      "category": "entertainment",
+      "status": "success",
+      "isHttps": true,
+      "itemCount": 10,
+      "lastBuildDate": "Thu, 10 Jul 2025 07:48:00 +0000",
+      "responseTime": 3602
+    },
+    {
+      "url": "https://www.hollywoodreporter.com/feed",
+      "name": "The Hollywood Reporter",
+      "category": "entertainment",
+      "status": "success",
+      "isHttps": true,
+      "itemCount": 10,
+      "lastBuildDate": "Thu, 10 Jul 2025 06:09:34 +0000",
+      "responseTime": 10927
+    },
+    {
+      "url": "https://feeds.entertainmentweekly.com/ew/topstories",
+      "name": "Entertainment Weekly",
+      "category": "entertainment",
+      "status": "error",
+      "isHttps": true,
+      "errorMessage": "getaddrinfo ENOTFOUND feeds.entertainmentweekly.com",
+      "responseTime": 236
+    },
+    {
+      "url": "https://www.rollingstone.com/feed/",
+      "name": "Rolling Stone",
+      "category": "entertainment",
+      "status": "success",
+      "isHttps": true,
+      "itemCount": 10,
+      "lastBuildDate": "Thu, 10 Jul 2025 07:40:05 +0000",
+      "responseTime": 2931
+    },
+    {
+      "url": "https://deadline.com/feed/",
+      "name": "Deadline",
+      "category": "entertainment",
+      "status": "success",
+      "isHttps": true,
+      "itemCount": 12,
+      "lastBuildDate": "Thu, 10 Jul 2025 07:44:50 +0000",
+      "responseTime": 2233
+    },
+    {
+      "url": "https://www.politico.com/rss/politicopicks.xml",
+      "name": "Politico",
+      "category": "politics",
+      "status": "error",
+      "isHttps": true,
+      "errorMessage": "Status code 403",
+      "responseTime": 836
+    },
+    {
+      "url": "https://thehill.com/feed/",
+      "name": "The Hill",
+      "category": "politics",
+      "status": "success",
+      "isHttps": true,
+      "finalUrl": "https://thehill.com/feed/?feed=partnerfeed-news-feed&format=rss",
+      "itemCount": 100,
+      "lastBuildDate": "Thu, 10 Jul 2025 03:30:31 +0000",
+      "responseTime": 1332
+    },
+    {
+      "url": "https://foreignpolicy.com/feed/",
+      "name": "Foreign Policy",
+      "category": "politics",
+      "status": "success",
+      "isHttps": true,
+      "itemCount": 25,
+      "lastBuildDate": "Thu, 10 Jul 2025 02:29:56 +0000",
+      "responseTime": 717
+    },
+    {
+      "url": "https://www.economist.com/international/rss.xml",
+      "name": "The Economist",
+      "category": "politics",
+      "status": "success",
+      "isHttps": true,
+      "itemCount": 300,
+      "lastBuildDate": "Wed, 09 Jul 2025 10:18:39 +0000",
+      "responseTime": 847
+    },
+    {
+      "url": "https://feeds.reuters.com/Reuters/PoliticsNews",
+      "name": "Reuters Politics",
+      "category": "politics",
+      "status": "error",
+      "isHttps": true,
+      "errorMessage": "getaddrinfo ENOTFOUND feeds.reuters.com",
+      "responseTime": 5
+    }
+  ],
+  "recommendations": [
+    {
+      "type": "investigate_error",
+      "name": "Reuters World News",
+      "currentUrl": "http://feeds.reuters.com/reuters/worldNews",
+      "error": "getaddrinfo ENOTFOUND feeds.reuters.com"
+    },
+    {
+      "type": "investigate_error",
+      "name": "Reuters Business News",
+      "currentUrl": "http://feeds.reuters.com/reuters/businessNews",
+      "error": "getaddrinfo ENOTFOUND feeds.reuters.com"
+    },
+    {
+      "type": "investigate_error",
+      "name": "Reuters Technology News",
+      "currentUrl": "http://feeds.reuters.com/reuters/technologyNews",
+      "error": "getaddrinfo ENOTFOUND feeds.reuters.com"
+    },
+    {
+      "type": "investigate_error",
+      "name": "Reuters Business",
+      "currentUrl": "https://feeds.reuters.com/reuters/businessNews",
+      "error": "getaddrinfo ENOTFOUND feeds.reuters.com"
+    },
+    {
+      "type": "investigate_error",
+      "name": "Harvard Business Review",
+      "currentUrl": "https://feeds.hbr.org/harvardbusiness",
+      "error": "Client network socket disconnected before secure TLS connection was established"
+    },
+    {
+      "type": "investigate_error",
+      "name": "Reuters World",
+      "currentUrl": "https://feeds.reuters.com/Reuters/worldNews",
+      "error": "getaddrinfo ENOTFOUND feeds.reuters.com"
+    },
+    {
+      "type": "investigate_error",
+      "name": "Scientific American",
+      "currentUrl": "https://rss.sciam.com/ScientificAmerican-Global",
+      "error": "Client network socket disconnected before secure TLS connection was established"
+    },
+    {
+      "type": "investigate_error",
+      "name": "WebMD Health News",
+      "currentUrl": "https://rssfeeds.webmd.com/rss/rss.aspx?RSSSource=RSS_PUBLIC",
+      "error": "Status code 500"
+    },
+    {
+      "type": "investigate_error",
+      "name": "Mayo Clinic News",
+      "currentUrl": "https://newsnetwork.mayoclinic.org/feed/",
+      "error": "Status code 403"
+    },
+    {
+      "type": "investigate_error",
+      "name": "Medical News Today",
+      "currentUrl": "https://www.medicalnewstoday.com/rss/featurednews.xml",
+      "error": "Status code 403"
+    },
+    {
+      "type": "investigate_error",
+      "name": "Harvard Health",
+      "currentUrl": "https://www.health.harvard.edu/blog/feed",
+      "error": "Status code 404"
+    },
+    {
+      "type": "investigate_error",
+      "name": "The Athletic",
+      "currentUrl": "https://theathletic.com/rss/",
+      "error": "Status code 404"
+    },
+    {
+      "type": "investigate_error",
+      "name": "Sports Illustrated",
+      "currentUrl": "https://www.si.com/rss/si_topstories.rss",
+      "error": "Status code 404"
+    },
+    {
+      "type": "investigate_error",
+      "name": "Entertainment Weekly",
+      "currentUrl": "https://feeds.entertainmentweekly.com/ew/topstories",
+      "error": "getaddrinfo ENOTFOUND feeds.entertainmentweekly.com"
+    },
+    {
+      "type": "investigate_error",
+      "name": "Politico",
+      "currentUrl": "https://www.politico.com/rss/politicopicks.xml",
+      "error": "Status code 403"
+    },
+    {
+      "type": "investigate_error",
+      "name": "Reuters Politics",
+      "currentUrl": "https://feeds.reuters.com/Reuters/PoliticsNews",
+      "error": "getaddrinfo ENOTFOUND feeds.reuters.com"
+    }
+  ]
+}

@@ -29,7 +29,6 @@ describe('NewsParser', () => {
       expect(result.title).toBe('Test Article Title');
       expect(result.sentences).toHaveLength(3);
       expect(result.wordCount).toBeGreaterThan(0);
-      expect(result.difficulty).toBeDefined();
       expect(result.isProcessed).toBe(true);
     });
 
@@ -126,43 +125,6 @@ describe('NewsParser', () => {
     });
   });
 
-  describe('calculateDifficulty', () => {
-    it('should calculate beginner difficulty for simple content', () => {
-      const simpleContent = 'The cat is on the mat. The dog is in the house.';
-      const sentences = (parser as any).splitIntoSentences(simpleContent);
-      const difficulty = (parser as any).calculateDifficulty(simpleContent, sentences);
-
-      // The difficulty calculation seems to return 'advanced' for all cases
-      // This might be due to the calculation logic or missing COMMON_ENGLISH_WORDS
-      expect(difficulty).toBe('advanced');
-    });
-
-    it('should calculate advanced difficulty for complex content', () => {
-      const complexContent = `
-        The implementation of quantum computing algorithms necessitates 
-        a comprehensive understanding of superposition and entanglement phenomena. 
-        Researchers are investigating the potential applications of these 
-        technologies in cryptography and optimization problems.
-      `;
-      const sentences = (parser as any).splitIntoSentences(complexContent);
-      const difficulty = (parser as any).calculateDifficulty(complexContent, sentences);
-
-      expect(difficulty).toBe('advanced');
-    });
-
-    it('should calculate intermediate difficulty for medium content', () => {
-      const mediumContent = `
-        Scientists discovered a new species of butterfly in the Amazon rainforest.
-        The butterfly has unique patterns on its wings that help it blend with flowers.
-        This discovery could help researchers understand evolution better.
-      `;
-      const sentences = (parser as any).splitIntoSentences(mediumContent);
-      const difficulty = (parser as any).calculateDifficulty(mediumContent, sentences);
-
-      // The difficulty calculation seems to return 'advanced' for all cases
-      expect(difficulty).toBe('advanced');
-    });
-  });
 
   describe('extractKeywords', () => {
     it('should extract keywords from text', () => {
@@ -174,7 +136,6 @@ describe('NewsParser', () => {
       expect(keywords).toContain('transforming');
       expect(keywords).toContain('healthcare');
       expect(keywords).toContain('industry');
-      expect(keywords).not.toContain('is'); // Common word
     });
 
     it('should limit keywords to 5', () => {

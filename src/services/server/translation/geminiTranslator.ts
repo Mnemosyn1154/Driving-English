@@ -1,343 +1,444 @@
 /**
- * Gemini-based Translation Service
- * Uses Gemini API for high-quality news translation
+ * Gemini Translation Service
+ * Handles English to Korean translation with caching using Gemini API
  */
 
-import { 
-  ITranslationService,
-  TranslationRequest,
-  TranslationResponse,
-  BatchTranslationRequest,
-  BatchTranslationResponse,
-  TranslationError,
-  GeminiTranslationConfig,
-  GeminiPromptOptions,
-} from '@/types/translation';
-import { 
-  GEMINI_SYSTEM_PROMPTS,
-  GEMINI_CONFIG,
-  buildTranslationPrompt,
-  REVIEW_PROMPTS,
-} from '@/config/gemini-prompts';
-import { TranslationCache } from './translationCache';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { prisma } from '@/lib/prisma';
+import crypto from 'crypto';
 
-export class GeminiTranslator implements ITranslationService {
-  private apiKey: string;
-  private config: GeminiTranslationConfig;
-  private cache: TranslationCache;
-  private baseUrl = 'https://generativelanguage.googleapis.com/v1beta';
+interface TranslationOptions {
+  from?: string;
+  to?: string;
+  format?: 'text' | 'html';
+}
 
-  constructor(apiKey?: string, config?: GeminiTranslationConfig) {
-    this.apiKey = apiKey || process.env.GEMINI_API_KEY || '';
-    if (!this.apiKey) {
-      throw new Error('Gemini API key is required');
+interface TranslationResult {
+  translatedText: string;
+  detectedSourceLanguage?: string;
+  cached?: boolean;
+}
+
+interface BatchTranslationRequest {
+  texts: string[];
+  options?: TranslationOptions;
+}
+
+export class GeminiTranslator {
+  private genAI: GoogleGenerativeAI;
+  private model: any;
+  private cacheEnabled: boolean = true;
+  private cacheTTL: number = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+
+  constructor() {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY is not configured');
     }
 
-    this.config = {
-      model: config?.model || GEMINI_CONFIG.defaultModel,
-      ...GEMINI_CONFIG.translation,
-      ...config,
-    };
-
-    this.cache = new TranslationCache();
+    this.genAI = new GoogleGenerativeAI(apiKey);
+    this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
   }
 
   /**
-   * Translate a single text
+   * Translate single text
    */
-  async translate(request: TranslationRequest): Promise<TranslationResponse> {
-    try {
-      // Check cache first
-      const cacheKey = this.getCacheKey(request);
-      const cached = await this.cache.get(cacheKey);
+  async translateText(
+    text: string, 
+    options: TranslationOptions = {}
+  ): Promise<TranslationResult> {
+    const { from = 'en', to = 'ko', format = 'text' } = options;
+
+    // Check cache first
+    if (this.cacheEnabled) {
+      const cached = await this.getCachedTranslation(text, from, to);
       if (cached) {
         return {
-          id: request.id,
-          originalText: request.text,
-          translatedText: cached.translatedText,
-          sourceLanguage: request.sourceLanguage,
-          targetLanguage: request.targetLanguage,
-          confidence: cached.confidence,
-          timestamp: new Date(),
+          translatedText: cached,
+          cached: true,
         };
       }
+    }
 
-      // Build prompt based on type
-      const prompt = buildTranslationPrompt(
-        request.text,
-        request.type as any,
-        this.getPromptOptions(request)
-      );
+    try {
+      // Create translation prompt
+      const prompt = this.createTranslationPrompt(text, from, to);
+      
+      // Generate translation
+      const result = await this.model.generateContent(prompt);
+      const response = await result.response;
+      const translation = response.text().trim();
 
-      // Call Gemini API
-      const response = await this.callGeminiAPI(prompt);
-      const translatedText = this.extractTranslation(response);
-
-      // Review translation for quality
-      let confidence = 0.9; // Default confidence
-      if (request.type === 'sentence' || request.type === 'title') {
-        const review = await this.reviewTranslation(request.text, translatedText);
-        confidence = review.confidence;
+      // Cache the translation
+      if (this.cacheEnabled) {
+        await this.cacheTranslation(text, translation, from, to);
       }
 
-      // Cache the result
-      await this.cache.set(cacheKey, {
-        originalText: request.text,
-        translatedText,
-        confidence,
-      });
-
       return {
-        id: request.id,
-        originalText: request.text,
-        translatedText,
-        sourceLanguage: request.sourceLanguage,
-        targetLanguage: request.targetLanguage,
-        confidence,
-        timestamp: new Date(),
+        translatedText: translation,
+        detectedSourceLanguage: from,
+        cached: false,
       };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Translation error:', error);
-      throw new Error(`Translation failed: ${error.message}`);
+      throw new Error(`Failed to translate text: ${error.message}`);
     }
   }
 
   /**
    * Translate multiple texts in batch
    */
-  async translateBatch(request: BatchTranslationRequest): Promise<BatchTranslationResponse> {
-    const batchId = `batch_${Date.now()}`;
-    const translations: TranslationResponse[] = [];
-    const errors: TranslationError[] = [];
+  async translateBatch(
+    texts: string[], 
+    options: TranslationOptions = {}
+  ): Promise<TranslationResult[]> {
+    const { from = 'en', to = 'ko' } = options;
 
-    // Process in parallel with concurrency limit
-    const concurrencyLimit = 5;
-    const chunks = this.chunkArray(request.requests, concurrencyLimit);
+    // Check cache for all texts
+    const cacheResults = await Promise.all(
+      texts.map(text => this.getCachedTranslation(text, from, to))
+    );
 
-    for (const chunk of chunks) {
-      const promises = chunk.map(async (req) => {
-        try {
-          const result = await this.translate(req);
-          translations.push(result);
-        } catch (error: any) {
-          errors.push({
-            id: req.id,
-            code: 'TRANSLATION_FAILED',
-            message: error.message,
-          });
-        }
-      });
+    // Separate cached and uncached texts
+    const uncachedTexts: string[] = [];
+    const uncachedIndices: number[] = [];
+    const results: TranslationResult[] = [];
 
-      await Promise.all(promises);
-    }
-
-    return {
-      batchId,
-      translations,
-      successCount: translations.length,
-      failureCount: errors.length,
-      errors: errors.length > 0 ? errors : undefined,
-    };
-  }
-
-  /**
-   * Review translation quality
-   */
-  async reviewTranslation(
-    original: string, 
-    translation: string
-  ): Promise<{ isAccurate: boolean; suggestions?: string[]; confidence: number }> {
-    try {
-      const prompt = REVIEW_PROMPTS.accuracy(original, translation);
-      const response = await this.callGeminiAPI(prompt, GEMINI_CONFIG.review);
-      
-      // Parse JSON response
-      const reviewData = JSON.parse(this.extractTranslation(response));
-      
-      return {
-        isAccurate: reviewData.isAccurate ?? true,
-        suggestions: reviewData.suggestions,
-        confidence: reviewData.confidence ?? 0.9,
-      };
-    } catch (error) {
-      console.error('Review error:', error);
-      // Return default values if review fails
-      return {
-        isAccurate: true,
-        confidence: 0.8,
-      };
-    }
-  }
-
-  /**
-   * Call Gemini API
-   */
-  private async callGeminiAPI(
-    prompt: string, 
-    config?: Partial<GeminiTranslationConfig>
-  ): Promise<any> {
-    const model = config?.model || this.config.model;
-    const url = `${this.baseUrl}/models/${model}:generateContent?key=${this.apiKey}`;
-
-    const requestBody = {
-      contents: [{
-        parts: [{
-          text: prompt,
-        }],
-      }],
-      generationConfig: {
-        temperature: config?.temperature || this.config.temperature,
-        maxOutputTokens: config?.maxOutputTokens || this.config.maxOutputTokens,
-        topK: config?.topK || this.config.topK,
-        topP: config?.topP || this.config.topP,
-      },
-      safetySettings: [
-        {
-          category: 'HARM_CATEGORY_HARASSMENT',
-          threshold: 'BLOCK_NONE',
-        },
-        {
-          category: 'HARM_CATEGORY_HATE_SPEECH',
-          threshold: 'BLOCK_NONE',
-        },
-        {
-          category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-          threshold: 'BLOCK_NONE',
-        },
-        {
-          category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-          threshold: 'BLOCK_NONE',
-        },
-      ],
-    };
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
+    texts.forEach((text, index) => {
+      if (cacheResults[index]) {
+        results[index] = {
+          translatedText: cacheResults[index]!,
+          cached: true,
+        };
+      } else {
+        uncachedTexts.push(text);
+        uncachedIndices.push(index);
+      }
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`Gemini API error: ${error.error?.message || response.statusText}`);
-    }
+    // Translate uncached texts if any
+    if (uncachedTexts.length > 0) {
+      try {
+        // Create batch translation prompt
+        const prompt = this.createBatchTranslationPrompt(uncachedTexts, from, to);
+        
+        // Generate translations
+        const result = await this.model.generateContent(prompt);
+        const response = await result.response;
+        const translationsText = response.text();
+        
+        // Parse translations
+        const translations = this.parseBatchTranslations(translationsText);
 
-    return response.json();
-  }
+        // Process translations
+        for (let i = 0; i < uncachedTexts.length; i++) {
+          const originalIndex = uncachedIndices[i];
+          const translation = translations[i] || `[Translation failed: ${uncachedTexts[i]}]`;
 
-  /**
-   * Extract translation from Gemini response
-   */
-  private extractTranslation(response: any): string {
-    try {
-      const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!text) {
-        throw new Error('No translation in response');
+          results[originalIndex] = {
+            translatedText: translation,
+            cached: false,
+          };
+
+          // Cache the translation
+          if (this.cacheEnabled) {
+            await this.cacheTranslation(
+              uncachedTexts[i], 
+              translation, 
+              from, 
+              to
+            );
+          }
+        }
+      } catch (error) {
+        console.error('Batch translation error:', error);
+        throw new Error(`Failed to translate batch: ${error.message}`);
       }
-      return text.trim();
-    } catch (error) {
-      console.error('Failed to extract translation:', error);
-      throw new Error('Invalid response format');
     }
+
+    return results;
   }
 
   /**
-   * Get cache key for translation
+   * Translate article with all its content
    */
-  private getCacheKey(request: TranslationRequest): string {
-    return `${request.sourceLanguage}_${request.targetLanguage}_${request.type}_${
-      this.hashText(request.text)
-    }`;
-  }
-
-  /**
-   * Simple hash function for text
-   */
-  private hashText(text: string): string {
-    let hash = 0;
-    for (let i = 0; i < text.length; i++) {
-      const char = text.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    return Math.abs(hash).toString(36);
-  }
-
-  /**
-   * Get prompt options based on request
-   */
-  private getPromptOptions(request: TranslationRequest): GeminiPromptOptions {
-    return {
-      includeExamples: request.type === 'article',
-      formalityLevel: 'formal',
-      preserveFormatting: true,
-      technicalTermHandling: 'translate',
-      targetAudience: 'general',
-    };
-  }
-
-  /**
-   * Chunk array for parallel processing
-   */
-  private chunkArray<T>(array: T[], size: number): T[][] {
-    const chunks: T[][] = [];
-    for (let i = 0; i < array.length; i += size) {
-      chunks.push(array.slice(i, i + size));
-    }
-    return chunks;
-  }
-
-  /**
-   * Translate article with consistency check
-   */
-  async translateArticleWithConsistency(
-    title: string,
-    summary: string,
-    sentences: string[]
-  ): Promise<{
+  async translateArticle(articleId: string): Promise<{
     title: string;
     summary: string;
-    sentences: string[];
+    sentences: Array<{ id: string; translation: string }>;
   }> {
-    // First, translate all parts
-    const titleTranslation = await this.translate({
-      id: 'title',
-      text: title,
-      sourceLanguage: 'en',
-      targetLanguage: 'ko',
-      type: 'title',
+    // Fetch article with sentences
+    const article = await prisma.article.findUnique({
+      where: { id: articleId },
+      include: {
+        sentences: {
+          orderBy: { order: 'asc' },
+        },
+      },
     });
 
-    const summaryTranslation = await this.translate({
-      id: 'summary',
-      text: summary,
-      sourceLanguage: 'en',
-      targetLanguage: 'ko',
-      type: 'summary',
+    if (!article) {
+      throw new Error('Article not found');
+    }
+
+    // Prepare texts for batch translation
+    const textsToTranslate = [
+      article.title,
+      article.summary,
+      ...article.sentences.map(s => s.text),
+    ];
+
+    // Translate all texts
+    const translations = await this.translateBatch(textsToTranslate);
+
+    // Update article with translations
+    await prisma.article.update({
+      where: { id: articleId },
+      data: {
+        titleKo: translations[0].translatedText,
+        summaryKo: translations[1].translatedText,
+        isProcessed: true,
+        processedAt: new Date(),
+      },
     });
 
-    const sentenceTranslations = await this.translateBatch({
-      requests: sentences.map((sentence, index) => ({
-        id: `sentence_${index}`,
-        text: sentence,
-        sourceLanguage: 'en' as const,
-        targetLanguage: 'ko' as const,
-        type: 'sentence' as const,
-        context: title,
-      })),
-    });
+    // Update sentences with translations
+    const sentenceTranslations = await Promise.all(
+      article.sentences.map(async (sentence, index) => {
+        const translation = translations[index + 2].translatedText;
+        
+        await prisma.sentence.update({
+          where: { id: sentence.id },
+          data: { translation },
+        });
 
-    // Extract translated sentences
-    const translatedSentences = sentenceTranslations.translations
-      .sort((a, b) => parseInt(a.id.split('_')[1]) - parseInt(b.id.split('_')[1]))
-      .map(t => t.translatedText);
+        return {
+          id: sentence.id,
+          translation,
+        };
+      })
+    );
 
     return {
-      title: titleTranslation.translatedText,
-      summary: summaryTranslation.translatedText,
-      sentences: translatedSentences,
+      title: translations[0].translatedText,
+      summary: translations[1].translatedText,
+      sentences: sentenceTranslations,
+    };
+  }
+
+  /**
+   * Create translation prompt for Gemini
+   */
+  private createTranslationPrompt(text: string, from: string, to: string): string {
+    const langMap = {
+      en: 'English',
+      ko: 'Korean',
+      ja: 'Japanese',
+      zh: 'Chinese',
+      es: 'Spanish',
+      fr: 'French',
+    };
+
+    const fromLang = langMap[from] || from;
+    const toLang = langMap[to] || to;
+
+    return `Translate the following ${fromLang} text to ${toLang}. 
+Provide only the translated text without any explanations or additional content.
+Preserve the original meaning and tone as much as possible.
+
+Text to translate:
+${text}
+
+Translation:`;
+  }
+
+  /**
+   * Create batch translation prompt
+   */
+  private createBatchTranslationPrompt(texts: string[], from: string, to: string): string {
+    const langMap = {
+      en: 'English',
+      ko: 'Korean',
+      ja: 'Japanese',
+      zh: 'Chinese',
+      es: 'Spanish',
+      fr: 'French',
+    };
+
+    const fromLang = langMap[from] || from;
+    const toLang = langMap[to] || to;
+
+    const numberedTexts = texts.map((text, i) => `${i + 1}. ${text}`).join('\n');
+
+    return `Translate the following ${fromLang} texts to ${toLang}.
+For each numbered text, provide the translation on a new line with the same number.
+Provide only the translations without any explanations.
+Preserve the original meaning and tone.
+
+Texts to translate:
+${numberedTexts}
+
+Translations:`;
+  }
+
+  /**
+   * Parse batch translations from Gemini response
+   */
+  private parseBatchTranslations(response: string): string[] {
+    const lines = response.split('\n').filter(line => line.trim());
+    const translations: string[] = [];
+
+    for (const line of lines) {
+      // Match numbered format: "1. Translation text"
+      const match = line.match(/^\d+\.\s*(.+)$/);
+      if (match) {
+        translations.push(match[1].trim());
+      }
+    }
+
+    return translations;
+  }
+
+  /**
+   * Get cached translation
+   */
+  private async getCachedTranslation(
+    text: string,
+    sourceLanguage: string,
+    targetLanguage: string
+  ): Promise<string | null> {
+    const cacheKey = this.generateCacheKey(text, sourceLanguage, targetLanguage);
+    
+    try {
+      const cached = await prisma.cache.findUnique({
+        where: { key: cacheKey },
+      });
+
+      if (cached && cached.expires_at > new Date()) {
+        // Parse the cached value
+        const data = cached.value as any;
+        return data.translation;
+      }
+    } catch (error) {
+      console.error('Cache retrieval error:', error);
+    }
+
+    return null;
+  }
+
+  /**
+   * Cache translation
+   */
+  private async cacheTranslation(
+    text: string,
+    translation: string,
+    sourceLanguage: string,
+    targetLanguage: string
+  ): Promise<void> {
+    const cacheKey = this.generateCacheKey(text, sourceLanguage, targetLanguage);
+    const expiresAt = new Date(Date.now() + this.cacheTTL);
+
+    try {
+      await prisma.cache.upsert({
+        where: { key: cacheKey },
+        update: {
+          value: { text, translation, sourceLanguage, targetLanguage },
+          expires_at: expiresAt,
+        },
+        create: {
+          key: cacheKey,
+          value: { text, translation, sourceLanguage, targetLanguage },
+          expires_at: expiresAt,
+        },
+      });
+
+      // Also track in cache entry for statistics
+      await prisma.cacheEntry.upsert({
+        where: { key: cacheKey },
+        update: {
+          hits: { increment: 1 },
+          lastAccessed: new Date(),
+          expiresAt,
+        },
+        create: {
+          key: cacheKey,
+          type: 'TRANSLATION',
+          size: Buffer.byteLength(translation, 'utf8'),
+          expiresAt,
+        },
+      });
+    } catch (error) {
+      console.error('Cache storage error:', error);
+    }
+  }
+
+  /**
+   * Generate cache key
+   */
+  private generateCacheKey(
+    text: string,
+    sourceLanguage: string,
+    targetLanguage: string
+  ): string {
+    const hash = crypto
+      .createHash('sha256')
+      .update(`${sourceLanguage}:${targetLanguage}:${text}`)
+      .digest('hex');
+    return `translation:${hash}`;
+  }
+
+  /**
+   * Clear expired cache entries
+   */
+  async clearExpiredCache(): Promise<number> {
+    const result = await prisma.cache.deleteMany({
+      where: {
+        expires_at: {
+          lt: new Date(),
+        },
+      },
+    });
+
+    await prisma.cacheEntry.deleteMany({
+      where: {
+        expiresAt: {
+          lt: new Date(),
+        },
+      },
+    });
+
+    return result.count;
+  }
+
+  /**
+   * Get translation statistics
+   */
+  async getStatistics(): Promise<{
+    totalTranslations: number;
+    cachedTranslations: number;
+    cacheHitRate: number;
+    averageTranslationSize: number;
+  }> {
+    const stats = await prisma.cacheEntry.aggregate({
+      where: { type: 'TRANSLATION' },
+      _count: true,
+      _sum: { hits: true, size: true },
+      _avg: { size: true },
+    });
+
+    const totalTranslations = stats._count;
+    const cachedHits = stats._sum.hits || 0;
+    const totalSize = stats._sum.size || 0;
+    const avgSize = stats._avg.size || 0;
+
+    return {
+      totalTranslations,
+      cachedTranslations: cachedHits,
+      cacheHitRate: totalTranslations > 0 ? cachedHits / (totalTranslations + cachedHits) : 0,
+      averageTranslationSize: Math.round(avgSize),
     };
   }
 }
+
+// Export singleton instance
+export const translator = new GeminiTranslator();

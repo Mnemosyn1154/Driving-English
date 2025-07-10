@@ -5,7 +5,6 @@
 // News source types
 export type NewsSourceType = 'rss' | 'api' | 'manual';
 export type NewsCategory = 'world' | 'business' | 'technology' | 'science' | 'health' | 'entertainment' | 'sports';
-export type DifficultyLevel = 'beginner' | 'intermediate' | 'advanced';
 export type Language = 'en' | 'ko';
 
 // News source configuration
@@ -42,7 +41,6 @@ export interface Sentence {
     english?: string;
     korean?: string;
   };
-  difficulty?: DifficultyLevel;
   keywords?: string[];
 }
 
@@ -56,7 +54,6 @@ export interface Article {
   content: string;
   sentences: Sentence[];
   metadata: ArticleMetadata;
-  difficulty: DifficultyLevel;
   wordCount: number;
   estimatedReadTime: number; // in seconds
   isProcessed: boolean;
@@ -143,7 +140,6 @@ export interface CachedArticle {
 // Filter and sort options
 export interface NewsFilter {
   categories?: NewsCategory[];
-  difficulty?: DifficultyLevel[];
   sources?: string[];
   fromDate?: Date;
   toDate?: Date;
@@ -152,7 +148,7 @@ export interface NewsFilter {
 }
 
 export interface NewsSortOptions {
-  field: 'publishedAt' | 'difficulty' | 'wordCount' | 'title';
+  field: 'publishedAt' | 'wordCount' | 'title';
   order: 'asc' | 'desc';
 }
 

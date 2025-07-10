@@ -10,7 +10,6 @@ interface Article {
   title: string;
   titleKo?: string;
   summary: string;
-  difficulty: number;
   category: string;
   wordCount: number;
   publishedAt: string;
@@ -80,15 +79,6 @@ export function NewsList({ category, personalized = true }: NewsListProps) {
     }
   }
 
-  const getDifficultyLabel = (difficulty: number) => {
-    const labels = ['초급', '초중급', '중급', '중상급', '상급'];
-    return labels[difficulty - 1] || '중급';
-  };
-
-  const getDifficultyColor = (difficulty: number) => {
-    const colors = ['#4CAF50', '#8BC34A', '#FFC107', '#FF9800', '#F44336'];
-    return colors[difficulty - 1] || '#FFC107';
-  };
 
   const getCategoryLabel = (category: string) => {
     const labels: Record<string, string> = {
@@ -132,12 +122,6 @@ export function NewsList({ category, personalized = true }: NewsListProps) {
             <div className={styles.articleHeader}>
               <span className={styles.category}>
                 {getCategoryLabel(article.category)}
-              </span>
-              <span 
-                className={styles.difficulty}
-                style={{ backgroundColor: getDifficultyColor(article.difficulty) }}
-              >
-                {getDifficultyLabel(article.difficulty)}
               </span>
             </div>
             

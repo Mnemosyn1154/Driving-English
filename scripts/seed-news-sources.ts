@@ -5,8 +5,22 @@ dotenv.config({ path: '.env.local' });
 
 const prisma = new PrismaClient();
 
-// 다양한 영어 뉴스 RSS 피드 소스
-const RSS_SOURCES = [
+// Import validated RSS sources
+import { VALIDATED_NEWS_SOURCES } from '../src/config/validated-news-sources';
+
+// Convert to seed format
+const RSS_SOURCES = VALIDATED_NEWS_SOURCES
+  .filter(source => source.type === 'rss' && source.enabled)
+  .map(source => ({
+    name: source.name,
+    type: 'RSS',
+    url: source.url,
+    category: source.category,
+    updateInterval: source.updateInterval,
+  }));
+
+// Legacy sources (commented out)
+const LEGACY_RSS_SOURCES = [
   // 기술 뉴스
   {
     name: 'TechCrunch',

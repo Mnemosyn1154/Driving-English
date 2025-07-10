@@ -8,19 +8,6 @@ dotenv.config({ path: '.env.local' });
 const prisma = new PrismaClient();
 const parser = new Parser();
 
-// 난이도 계산 함수 (단어 수와 문장 복잡도 기반)
-function calculateDifficulty(text: string): number {
-  const words = text.split(/\s+/).length;
-  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
-  const avgWordsPerSentence = words / sentences;
-  
-  // 간단한 난이도 계산 로직
-  if (avgWordsPerSentence < 10) return 1; // 초급
-  if (avgWordsPerSentence < 15) return 2; // 초중급
-  if (avgWordsPerSentence < 20) return 3; // 중급
-  if (avgWordsPerSentence < 25) return 4; // 중상급
-  return 5; // 상급
-}
 
 // 읽기 시간 계산 (분)
 function calculateReadingTime(wordCount: number): number {
@@ -72,7 +59,6 @@ async function fetchFromSource(source: any) {
             url: item.link,
             imageUrl: item.enclosure?.url,
             publishedAt: item.pubDate ? new Date(item.pubDate) : new Date(),
-            difficulty: calculateDifficulty(fullContent),
             wordCount: wordCount,
             readingTime: calculateReadingTime(wordCount),
             category: source.category,

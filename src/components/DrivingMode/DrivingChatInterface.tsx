@@ -25,7 +25,6 @@ interface NewsSearchResult {
   title: string;
   summary: string;
   source: string;
-  difficulty?: number;
   url: string;
   selectionNumber: number;
   category?: string;

@@ -6,6 +6,7 @@
 import Parser from 'rss-parser';
 import { prisma } from '@/lib/prisma';
 import { v4 as uuidv4 } from 'uuid';
+import { TextProcessor } from '@/utils/textProcessing';
 import { URL } from 'url';
 
 interface RSSItem {
@@ -91,17 +92,19 @@ export class RSSParserService {
             });
 
             if (!exists) {
+              // Generate article ID
+              const articleId = uuidv4();
+              
               // Save article to database
-              await prisma.article.create({
+              const savedArticle = await prisma.article.create({
                 data: {
-                  id: uuidv4(),
+                  id: articleId,
                   sourceId: source.id,
                   title: article.title,
                   summary: article.summary,
                   content: article.content,
                   url: article.url,
                   publishedAt: article.publishedAt,
-                  difficulty: 3, // Default medium difficulty
                   wordCount: article.wordCount,
                   readingTime: article.readingTime,
                   category: article.category,
@@ -109,6 +112,21 @@ export class RSSParserService {
                   isProcessed: false, // Will be processed later for translation
                 }
               });
+
+              // Split content into sentences and save them
+              const sentences = TextProcessor.splitIntoSentences(article.content);
+              if (sentences.length > 0) {
+                await prisma.sentence.createMany({
+                  data: sentences.map(sentence => ({
+                    id: uuidv4(),
+                    articleId: articleId,
+                    order: sentence.order,
+                    text: sentence.text,
+                    wordCount: sentence.wordCount,
+                  }))
+                });
+              }
+
               processed++;
             }
           }

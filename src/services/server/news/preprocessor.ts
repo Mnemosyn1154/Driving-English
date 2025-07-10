@@ -6,7 +6,6 @@
 import { 
   Article, 
   ProcessedArticle,
-  DifficultyLevel,
   NewsFilter,
   NewsSortOptions,
   PaginatedResponse,
@@ -97,12 +96,6 @@ export class NewsPreprocessor {
         }
       }
 
-      // Filter by difficulty
-      if (filter.difficulty && filter.difficulty.length > 0) {
-        if (!filter.difficulty.includes(article.difficulty)) {
-          return false;
-        }
-      }
 
       // Filter by sources
       if (filter.sources && filter.sources.length > 0) {
@@ -156,10 +149,6 @@ export class NewsPreprocessor {
         case 'publishedAt':
           comparison = a.metadata.publishedAt.getTime() - b.metadata.publishedAt.getTime();
           break;
-        case 'difficulty':
-          const difficultyOrder = { beginner: 0, intermediate: 1, advanced: 2 };
-          comparison = difficultyOrder[a.difficulty] - difficultyOrder[b.difficulty];
-          break;
         case 'wordCount':
           comparison = a.wordCount - b.wordCount;
           break;
@@ -198,16 +187,6 @@ export class NewsPreprocessor {
     };
   }
 
-  /**
-   * Group articles by difficulty
-   */
-  groupByDifficulty(articles: Article[]): Record<DifficultyLevel, Article[]> {
-    return {
-      beginner: articles.filter(a => a.difficulty === 'beginner'),
-      intermediate: articles.filter(a => a.difficulty === 'intermediate'),
-      advanced: articles.filter(a => a.difficulty === 'advanced'),
-    };
-  }
 
   /**
    * Group articles by category

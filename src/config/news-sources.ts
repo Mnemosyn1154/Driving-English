@@ -1,10 +1,16 @@
 /**
  * News Sources Configuration
+ * Updated with validated RSS feeds - 2025-07-10
  */
 
 import { NewsSource } from '@/types/news';
 
-export const NEWS_SOURCES: NewsSource[] = [
+// Re-export validated sources as the main source
+export { NEWS_SOURCES, VALIDATED_NEWS_SOURCES } from './validated-news-sources';
+export { BROKEN_FEEDS } from './validated-news-sources';
+
+// Legacy sources kept for reference
+export const LEGACY_NEWS_SOURCES: NewsSource[] = [
   // BBC News
   {
     id: 'bbc-world',
@@ -163,41 +169,6 @@ export const CATEGORY_NAMES: Record<string, string> = {
   sports: 'Sports',
 };
 
-// Difficulty level thresholds
-export const DIFFICULTY_THRESHOLDS = {
-  beginner: {
-    maxWordCount: 300,
-    maxSentenceLength: 15,
-    commonWordPercentage: 0.9,
-  },
-  intermediate: {
-    maxWordCount: 600,
-    maxSentenceLength: 25,
-    commonWordPercentage: 0.8,
-  },
-  advanced: {
-    maxWordCount: Infinity,
-    maxSentenceLength: Infinity,
-    commonWordPercentage: 0,
-  },
-};
-
-// Common English words for difficulty assessment
-export const COMMON_ENGLISH_WORDS = new Set([
-  'the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'i',
-  'it', 'for', 'not', 'on', 'with', 'he', 'as', 'you', 'do', 'at',
-  'this', 'but', 'his', 'by', 'from', 'they', 'we', 'say', 'her', 'she',
-  'or', 'an', 'will', 'my', 'one', 'all', 'would', 'there', 'their',
-  'what', 'so', 'up', 'out', 'if', 'about', 'who', 'get', 'which', 'go',
-  'me', 'when', 'make', 'can', 'like', 'time', 'no', 'just', 'him', 'know',
-  'take', 'people', 'into', 'year', 'your', 'good', 'some', 'could', 'them',
-  'see', 'other', 'than', 'then', 'now', 'look', 'only', 'come', 'its', 'over',
-  'think', 'also', 'back', 'after', 'use', 'two', 'how', 'our', 'work',
-  'first', 'well', 'way', 'even', 'new', 'want', 'because', 'any', 'these',
-  'give', 'day', 'most', 'us', 'is', 'was', 'are', 'been', 'has', 'had',
-  'were', 'said', 'did', 'getting', 'made', 'find', 'where', 'much', 'too',
-  'very', 'still', 'being', 'going', 'why', 'before', 'never', 'here', 'more',
-]);
 
 // News API configuration
 export const NEWS_API_CONFIG = {
