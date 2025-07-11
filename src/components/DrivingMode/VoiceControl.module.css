@@ -57,6 +57,40 @@
   height: 24px;
 }
 
+.settingsButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  background: rgba(30, 30, 30, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 18px;
+  color: white;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(10px);
+  min-width: 60px;
+}
+
+.settingsButton:hover {
+  background: rgba(50, 50, 50, 0.9);
+  transform: scale(1.05);
+}
+
+.settingsButton svg {
+  width: 16px;
+  height: 16px;
+}
+
+.modeLabel {
+  font-size: 9px;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
 .voiceButton {
   display: flex;
   align-items: center;
@@ -93,6 +127,24 @@
 .voiceButton.speaking {
   background: rgba(52, 199, 89, 0.9);
   border-color: rgba(52, 199, 89, 0.5);
+}
+
+.voiceButton.wakeWord {
+  background: rgba(255, 149, 0, 0.9);
+  border-color: rgba(255, 149, 0, 0.5);
+  animation: wakeWordPulse 1s infinite;
+}
+
+@keyframes wakeWordPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 149, 0, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(255, 149, 0, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 149, 0, 0);
+  }
 }
 
 @keyframes pulse {
@@ -157,6 +209,69 @@
   background: #007AFF;
   border-radius: 2px;
   transition: width 0.1s ease;
+}
+
+.systemStatus {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 8px;
+  background: rgba(30, 30, 30, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 12px;
+  backdrop-filter: blur(10px);
+  min-width: 200px;
+  animation: slideUp 0.3s ease-out;
+}
+
+.statusIndicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.statusIndicator.error {
+  color: #FF453A;
+}
+
+.statusIndicator svg {
+  width: 16px;
+  height: 16px;
+}
+
+.serviceStatus {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.serviceItem {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  text-transform: uppercase;
+}
+
+.serviceItem.available {
+  background: rgba(52, 199, 89, 0.2);
+  color: #30D158;
+}
+
+.serviceItem.limited {
+  background: rgba(255, 149, 0, 0.2);
+  color: #FF9500;
+}
+
+.serviceItem.unavailable {
+  background: rgba(255, 69, 58, 0.2);
+  color: #FF453A;
 }
 
 /* Mobile responsive */

@@ -3,28 +3,115 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSTT } from '@/hooks/useSTT';
 import { useTTS } from '@/hooks/useTTS';
+import { useGeminiLiveAudio } from '@/hooks/useGeminiLiveAudio';
+import { useConversationContext } from '@/hooks/useConversationContext';
+import { useVoiceErrorHandler } from '@/hooks/useVoiceErrorHandler';
 import { ChatInterface, ChatMessage } from './ChatInterface';
+import { ConversationMessage } from '@/types/websocket';
 import styles from './VoiceControl.module.css';
 
 interface VoiceControlProps {
   isActive: boolean;
   onCommand: (command: string) => void;
   onTranscript: (transcript: string) => void;
+  useAdvancedVoice?: boolean; // Toggle between basic and advanced voice recognition
+  context?: string; // Context for AI assistant
 }
 
 export const VoiceControl: React.FC<VoiceControlProps> = ({
   isActive,
   onCommand,
   onTranscript,
+  useAdvancedVoice = false,
+  context,
 }) => {
   const [isListening, setIsListening] = useState(false);
   const [voiceLevel, setVoiceLevel] = useState(0);
-  const [status, setStatus] = useState<'idle' | 'listening' | 'processing' | 'speaking'>('idle');
+  const [status, setStatus] = useState<'idle' | 'listening' | 'processing' | 'speaking' | 'wake-word'>('idle');
   const [showChat, setShowChat] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [wakeWordMode, setWakeWordMode] = useState<'ml' | 'energy' | 'hybrid'>('hybrid');
   
-  // Use enhanced STT with noise filtering
+  // Conversation Context
+  const {
+    generateContextString,
+    addConversationMessage,
+    addRecentCommand,
+    updateDrivingContext,
+    drivingContext,
+    userPreferences,
+    sessionState,
+    getContextualRecommendations,
+  } = useConversationContext();
+
+  // Error handling
+  const {
+    isHealthy,
+    isInRecovery,
+    currentError,
+    handleError,
+    serviceStatus,
+    networkStatus,
+    permissionStatus,
+    audioDeviceStatus,
+  } = useVoiceErrorHandler({
+    enableLogging: true,
+    enableUserNotification: true,
+    gracefulDegradation: true,
+    onError: (error) => {
+      console.error('Voice error:', error);
+      setStatus('idle');
+      setIsProcessing(false);
+    },
+    onRecovery: (success) => {
+      console.log('Recovery result:', success);
+      if (success) {
+        setStatus('idle');
+      }
+    },
+    onFallback: (mode) => {
+      console.log('Fallback mode:', mode);
+      // Update UI to show fallback mode
+    },
+  });
+
+  // Advanced Voice Recognition with Gemini Live Audio
+  const geminiLiveAudio = useGeminiLiveAudio({
+    autoStart: false,
+    useLiveAPI: true,
+    useHybridMode: true,
+    wakeWordMode,
+    onCommand: (command, transcript) => {
+      console.log('Gemini command:', command, transcript);
+      
+      // Add to conversation context
+      addConversationMessage({
+        role: 'user',
+        content: transcript,
+        timestamp: Date.now(),
+      });
+      addRecentCommand(command);
+      
+      onCommand(command);
+      onTranscript(transcript);
+    },
+    onError: (error) => {
+      console.error('Gemini Live Audio error:', error);
+      handleError({
+        code: 'gemini-audio-error',
+        message: error.message,
+        details: error,
+        severity: 'medium',
+        source: 'gemini',
+        recoverable: true,
+      });
+      setStatus('idle');
+      setIsProcessing(false);
+    },
+  });
+
+  // Basic STT with noise filtering (fallback)
   const {
     isListening: isSpeechListening,
     transcript,
@@ -58,6 +145,43 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({
     autoPlay: true,
   });
 
+  // Update context when provided or when context changes
+  useEffect(() => {
+    if (useAdvancedVoice) {
+      // Generate dynamic context based on current state
+      const contextType = context ? 'newsReading' : 'general';
+      const dynamicContext = generateContextString(contextType);
+      const fullContext = context ? `${context}\n\n${dynamicContext}` : dynamicContext;
+      
+      geminiLiveAudio.updateContext(fullContext);
+    }
+  }, [context, useAdvancedVoice, geminiLiveAudio, generateContextString, drivingContext, userPreferences]);
+
+  // Update driving context when component is active
+  useEffect(() => {
+    if (isActive) {
+      updateDrivingContext({
+        isDriving: true,
+        timeOfDay: new Date().getHours() < 12 ? 'morning' : 
+                   new Date().getHours() < 17 ? 'afternoon' : 
+                   new Date().getHours() < 22 ? 'evening' : 'night',
+      });
+    }
+  }, [isActive, updateDrivingContext]);
+
+  // Sync messages with Gemini conversation
+  useEffect(() => {
+    if (useAdvancedVoice && geminiLiveAudio.conversation.length > 0) {
+      const chatMessages: ChatMessage[] = geminiLiveAudio.conversation.map((msg: ConversationMessage) => ({
+        id: `${msg.timestamp}`,
+        type: msg.role === 'user' ? 'user' : 'assistant',
+        content: msg.content,
+        timestamp: new Date(msg.timestamp),
+      }));
+      setMessages(chatMessages);
+    }
+  }, [useAdvancedVoice, geminiLiveAudio.conversation]);
+
   // Helper function to get command response
   const getCommandResponse = (text: string): string => {
     const lowerText = text.toLowerCase();
@@ -85,6 +209,13 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({
   // Handle transcript updates from speech recognition
   useEffect(() => {
     if (transcript && transcript !== '') {
+      // Add to conversation context
+      addConversationMessage({
+        role: 'user',
+        content: transcript,
+        timestamp: Date.now(),
+      });
+      
       // Add user message
       const userMessage: ChatMessage = {
         id: Date.now().toString(),
@@ -100,6 +231,14 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({
       // Get response
       setIsProcessing(true);
       const response = getCommandResponse(transcript);
+      
+      // Add to conversation context
+      addConversationMessage({
+        role: 'assistant',
+        content: response,
+        timestamp: Date.now(),
+      });
+      
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
@@ -114,41 +253,130 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({
       
       resetTranscript();
     }
-  }, [transcript, onTranscript, onCommand, resetTranscript]);
+  }, [transcript, onTranscript, onCommand, resetTranscript, addConversationMessage]);
 
-  // Update voice level from STT audio level
+  // Update voice level from STT audio level or Gemini confidence
   useEffect(() => {
-    setVoiceLevel(audioLevel);
-  }, [audioLevel]);
-
-  // Update status based on speaking state
-  useEffect(() => {
-    if (isSpeaking) {
-      setStatus('speaking');
-    } else if (isSpeechListening) {
-      setStatus('listening');
-    } else if (isProcessing) {
-      setStatus('processing');
+    if (useAdvancedVoice) {
+      setVoiceLevel(geminiLiveAudio.confidence);
     } else {
-      setStatus('idle');
+      setVoiceLevel(audioLevel);
     }
-  }, [isSpeaking, isSpeechListening, isProcessing]);
+  }, [audioLevel, useAdvancedVoice, geminiLiveAudio.confidence]);
+
+  // Update status based on advanced or basic voice recognition
+  useEffect(() => {
+    if (useAdvancedVoice) {
+      if (geminiLiveAudio.isSpeaking) {
+        setStatus('speaking');
+      } else if (geminiLiveAudio.wakeWordDetected) {
+        setStatus('wake-word');
+      } else if (geminiLiveAudio.isProcessing) {
+        setStatus('processing');
+      } else if (geminiLiveAudio.isListening) {
+        setStatus('listening');
+      } else {
+        setStatus('idle');
+      }
+    } else {
+      // Basic STT status
+      if (isSpeaking) {
+        setStatus('speaking');
+      } else if (isSpeechListening) {
+        setStatus('listening');
+      } else if (isProcessing) {
+        setStatus('processing');
+      } else {
+        setStatus('idle');
+      }
+    }
+  }, [
+    useAdvancedVoice,
+    geminiLiveAudio.isSpeaking,
+    geminiLiveAudio.wakeWordDetected,
+    geminiLiveAudio.isProcessing,
+    geminiLiveAudio.isListening,
+    isSpeaking,
+    isSpeechListening,
+    isProcessing,
+  ]);
 
   // Handle voice toggle
   const handleVoiceToggle = useCallback(async () => {
     try {
-      if (isSpeechListening) {
-        stopSpeechRecognition();
-        setIsListening(false);
+      if (useAdvancedVoice) {
+        // Advanced mode: toggle Gemini Live Audio
+        if (geminiLiveAudio.isListening) {
+          geminiLiveAudio.stopListening();
+          setIsListening(false);
+        } else {
+          await geminiLiveAudio.startListening();
+          setIsListening(true);
+        }
       } else {
-        await startSpeechRecognition();
-        setIsListening(true);
+        // Basic mode: toggle STT
+        if (isSpeechListening) {
+          stopSpeechRecognition();
+          setIsListening(false);
+        } else {
+          await startSpeechRecognition();
+          setIsListening(true);
+        }
       }
     } catch (err) {
       console.error('Voice toggle error:', err);
-      alert('음성 인식을 시작할 수 없습니다. 마이크 권한을 확인해주세요.');
+      
+      // Handle specific error types
+      if (err instanceof Error) {
+        if (err.name === 'NotAllowedError') {
+          handleError({
+            code: 'permission-denied',
+            message: '마이크 권한이 거부되었습니다',
+            details: err,
+            severity: 'high',
+            source: 'permission',
+            recoverable: true,
+          });
+        } else if (err.name === 'NotFoundError') {
+          handleError({
+            code: 'audio-device-not-found',
+            message: '마이크 장치를 찾을 수 없습니다',
+            details: err,
+            severity: 'high',
+            source: 'audio',
+            recoverable: true,
+          });
+        } else if (err.name === 'NetworkError') {
+          handleError({
+            code: 'network-error',
+            message: '네트워크 연결 오류',
+            details: err,
+            severity: 'medium',
+            source: 'network',
+            recoverable: true,
+          });
+        } else {
+          handleError({
+            code: 'voice-toggle-error',
+            message: err.message,
+            details: err,
+            severity: 'medium',
+            source: 'audio',
+            recoverable: true,
+          });
+        }
+      }
     }
-  }, [isSpeechListening, startSpeechRecognition, stopSpeechRecognition]);
+  }, [
+    useAdvancedVoice,
+    geminiLiveAudio.isListening,
+    geminiLiveAudio.startListening,
+    geminiLiveAudio.stopListening,
+    isSpeechListening,
+    startSpeechRecognition,
+    stopSpeechRecognition,
+    handleError,
+  ]);
 
   // Handle text message from chat
   const handleSendMessage = useCallback(async (message: string) => {
@@ -164,21 +392,32 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({
     // Process the message
     onTranscript(message);
     
-    // Get response
-    setIsProcessing(true);
-    const response = getCommandResponse(message);
-    const aiMessage: ChatMessage = {
-      id: (Date.now() + 1).toString(),
-      type: 'assistant',
-      content: response,
-      timestamp: new Date()
-    };
-    setMessages(prev => [...prev, aiMessage]);
-    
-    // Speak the response
-    await synthesize(response);
-    setIsProcessing(false);
-  }, [onTranscript, onCommand]);
+    if (useAdvancedVoice) {
+      // Advanced mode: send to Gemini Live Audio
+      setIsProcessing(true);
+      try {
+        await geminiLiveAudio.sendText(message);
+      } catch (error) {
+        console.error('Failed to send message to Gemini:', error);
+        setIsProcessing(false);
+      }
+    } else {
+      // Basic mode: use local command processing
+      setIsProcessing(true);
+      const response = getCommandResponse(message);
+      const aiMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        type: 'assistant',
+        content: response,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, aiMessage]);
+      
+      // Speak the response
+      await synthesize(response);
+      setIsProcessing(false);
+    }
+  }, [useAdvancedVoice, onTranscript, onCommand, geminiLiveAudio.sendText, getCommandResponse, synthesize]);
 
   // Auto-stop listening after 10 seconds
   useEffect(() => {
@@ -219,9 +458,29 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({
           </svg>
         </button>
 
+        {/* Advanced Voice Mode Toggle (when available) */}
+        {useAdvancedVoice && (
+          <button
+            className={styles.settingsButton}
+            onClick={() => {
+              const nextMode = wakeWordMode === 'hybrid' ? 'ml' : 
+                              wakeWordMode === 'ml' ? 'energy' : 'hybrid';
+              setWakeWordMode(nextMode);
+              geminiLiveAudio.setWakeWordMode(nextMode);
+            }}
+            aria-label={`웨이크워드 모드: ${wakeWordMode}`}
+            title={`현재 모드: ${wakeWordMode}\n클릭하여 변경`}
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            </svg>
+            <span className={styles.modeLabel}>{wakeWordMode}</span>
+          </button>
+        )}
+
         {/* Voice Button */}
         <button
-          className={`${styles.voiceButton} ${styles[status]}`}
+          className={`${styles.voiceButton} ${styles[status === 'wake-word' ? 'wakeWord' : status]}`}
           onClick={handleVoiceToggle}
           aria-label={isListening ? '음성 인식 중지' : '음성 인식 시작'}
           disabled={isSpeaking} // Disable while speaking
@@ -237,7 +496,12 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({
           </div>
           <span className={styles.statusText}>
             {status === 'idle' && '탭하여 말하기'}
-            {status === 'listening' && (interimTranscript || '듣는 중...')}
+            {status === 'wake-word' && '웨이크워드 감지됨'}
+            {status === 'listening' && (
+              useAdvancedVoice 
+                ? geminiLiveAudio.transcript || '듣는 중...'
+                : interimTranscript || '듣는 중...'
+            )}
             {status === 'processing' && '처리 중...'}
             {status === 'speaking' && '응답 중...'}
           </span>
@@ -251,6 +515,34 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({
             className={styles.voiceLevelBar} 
             style={{ width: `${voiceLevel * 100}%` }}
           />
+        </div>
+      )}
+
+      {/* System Status Indicator */}
+      {!isHealthy && (
+        <div className={styles.systemStatus}>
+          <div className={`${styles.statusIndicator} ${styles.error}`}>
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            </svg>
+            <span>
+              {isInRecovery ? '복구 중...' : 
+               currentError ? `오류: ${currentError.message}` : 
+               '시스템 상태 확인 중'}
+            </span>
+          </div>
+          {/* Service Status */}
+          <div className={styles.serviceStatus}>
+            <span className={`${styles.serviceItem} ${styles[serviceStatus.stt]}`}>
+              STT: {serviceStatus.stt}
+            </span>
+            <span className={`${styles.serviceItem} ${styles[serviceStatus.gemini]}`}>
+              AI: {serviceStatus.gemini}
+            </span>
+            <span className={`${styles.serviceItem} ${styles[serviceStatus.wakeWord]}`}>
+              감지: {serviceStatus.wakeWord}
+            </span>
+          </div>
         </div>
       )}
     </div>

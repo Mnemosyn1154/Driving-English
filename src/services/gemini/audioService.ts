@@ -5,6 +5,7 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GeminiAudioConfig, ConversationMessage } from '@/types/websocket';
+import { GeminiLiveAudioClient, LiveAudioResponse, createGeminiLiveAudioClient } from './liveAudioClient';
 
 export interface GeminiAudioServiceConfig {
   onTranscript?: (transcript: string, isFinal: boolean) => void;
@@ -12,7 +13,9 @@ export interface GeminiAudioServiceConfig {
   onError?: (error: Error) => void;
   onConversationUpdate?: (messages: ConversationMessage[]) => void;
   onCommand?: (command: string, transcript: string) => void;
+  onVoiceActivity?: (isActive: boolean) => void;
   hybridMode?: boolean; // Enable hybrid STT/Gemini processing
+  useLiveAPI?: boolean; // Use Gemini Live Audio API
 }
 
 export class GeminiAudioService {
@@ -20,11 +23,13 @@ export class GeminiAudioService {
   private geminiConfig: GeminiAudioConfig;
   private genAI: GoogleGenerativeAI;
   private model: any;
+  private liveAudioClient: GeminiLiveAudioClient | null = null;
   private conversationHistory: ConversationMessage[] = [];
   private isStreaming = false;
   private currentAudioBuffer: Buffer[] = [];
   private audioSampleRate = 16000;
   private hybridMode: boolean;
+  private useLiveAPI: boolean;
   private systemPrompt = `You are a helpful AI assistant for a driving English learning application. 
 Users will speak to you in Korean or English while driving. Your responses should be:
 1. Concise and clear for driving safety
@@ -48,6 +53,7 @@ Keep responses under 20 seconds for driving safety.`;
   constructor(config: GeminiAudioServiceConfig) {
     this.config = config;
     this.hybridMode = config.hybridMode || false;
+    this.useLiveAPI = config.useLiveAPI || false;
     this.geminiConfig = {
       apiKey: process.env.GEMINI_API_KEY || '',
       model: 'gemini-2.0-flash-exp',
@@ -62,6 +68,11 @@ Keep responses under 20 seconds for driving safety.`;
 
     this.genAI = new GoogleGenerativeAI(this.geminiConfig.apiKey);
     this.initializeModel();
+    
+    // Initialize Live Audio client if enabled
+    if (this.useLiveAPI) {
+      this.initializeLiveAudioClient();
+    }
   }
 
   /**
@@ -83,6 +94,72 @@ Keep responses under 20 seconds for driving safety.`;
   }
 
   /**
+   * Initialize Live Audio client
+   */
+  private initializeLiveAudioClient(): void {
+    try {
+      this.liveAudioClient = createGeminiLiveAudioClient({
+        apiKey: this.geminiConfig.apiKey!,
+        model: this.geminiConfig.model,
+        language: 'ko-KR',
+        sampleRate: this.audioSampleRate,
+        enableVAD: true,
+        interimResults: true,
+        context: this.systemPrompt,
+      });
+
+      // Set up event handlers
+      this.liveAudioClient.on('transcript', (response: LiveAudioResponse) => {
+        if (response.data.text) {
+          this.config.onTranscript?.(response.data.text, response.data.isFinal || false);
+        }
+      });
+
+      this.liveAudioClient.on('response', (response: LiveAudioResponse) => {
+        if (response.data.text) {
+          // Add to conversation history
+          this.conversationHistory.push({
+            role: 'assistant',
+            content: response.data.text,
+            timestamp: Date.now(),
+          });
+          
+          // Generate audio response
+          this.generateAudioResponse(response.data.text);
+          this.config.onConversationUpdate?.(this.conversationHistory);
+        }
+      });
+
+      this.liveAudioClient.on('vad', (response: LiveAudioResponse) => {
+        this.config.onVoiceActivity?.(response.data.speechDetected || false);
+      });
+
+      this.liveAudioClient.on('toolCall', (toolCall: any) => {
+        // Handle tool calls (commands)
+        if (toolCall.name === 'driving_assistant' && toolCall.parameters?.commands) {
+          const command = toolCall.parameters.commands[0];
+          const transcript = this.conversationHistory[this.conversationHistory.length - 1]?.content || '';
+          this.config.onCommand?.(command, transcript);
+        }
+      });
+
+      this.liveAudioClient.on('error', (error: Error) => {
+        console.error('Live Audio client error:', error);
+        this.config.onError?.(error);
+      });
+
+      this.liveAudioClient.on('disconnected', ({ code, reason }: any) => {
+        console.log('Live Audio client disconnected:', code, reason);
+        this.isStreaming = false;
+      });
+
+    } catch (error) {
+      console.error('Failed to initialize Live Audio client:', error);
+      this.config.onError?.(error as Error);
+    }
+  }
+
+  /**
    * Start audio streaming
    */
   async startStream(streamConfig: any): Promise<void> {
@@ -95,7 +172,13 @@ Keep responses under 20 seconds for driving safety.`;
         this.audioSampleRate = streamConfig.sampleRate;
       }
 
-      console.log('Gemini audio stream started');
+      // Use Live API if enabled
+      if (this.useLiveAPI && this.liveAudioClient) {
+        await this.liveAudioClient.connect();
+        console.log('Gemini Live Audio stream started');
+      } else {
+        console.log('Gemini audio stream started (standard mode)');
+      }
       
       // Initialize conversation with system prompt
       if (this.conversationHistory.length === 0) {
@@ -122,15 +205,24 @@ Keep responses under 20 seconds for driving safety.`;
     }
 
     try {
-      // Add audio chunk to buffer
-      this.currentAudioBuffer.push(audioData);
+      // Use Live API if enabled
+      if (this.useLiveAPI && this.liveAudioClient?.connected) {
+        // Convert Buffer to ArrayBuffer for Live API
+        const arrayBuffer = audioData.buffer.slice(
+          audioData.byteOffset,
+          audioData.byteOffset + audioData.byteLength
+        );
+        await this.liveAudioClient.sendAudio(arrayBuffer);
+      } else {
+        // Original buffering approach
+        this.currentAudioBuffer.push(audioData);
 
-      // For now, we'll process accumulated audio every 2 seconds
-      // In a real implementation, you'd use Gemini's streaming audio API
-      const totalDuration = this.currentAudioBuffer.length * 1024 / this.audioSampleRate;
-      
-      if (totalDuration >= 2.0) {
-        await this.processAccumulatedAudio();
+        // Process accumulated audio every 2 seconds
+        const totalDuration = this.currentAudioBuffer.length * 1024 / this.audioSampleRate;
+        
+        if (totalDuration >= 2.0) {
+          await this.processAccumulatedAudio();
+        }
       }
 
     } catch (error) {
@@ -394,9 +486,14 @@ Keep responses under 20 seconds for driving safety.`;
     try {
       this.isStreaming = false;
       
-      // Process any remaining audio
-      if (this.currentAudioBuffer.length > 0) {
-        await this.processAccumulatedAudio();
+      // Disconnect Live API if used
+      if (this.useLiveAPI && this.liveAudioClient) {
+        this.liveAudioClient.disconnect();
+      } else {
+        // Process any remaining audio in standard mode
+        if (this.currentAudioBuffer.length > 0) {
+          await this.processAccumulatedAudio();
+        }
       }
 
       console.log('Gemini audio stream ended');
@@ -461,11 +558,37 @@ Keep responses under 20 seconds for driving safety.`;
   }
 
   /**
+   * Send text message (for testing or fallback)
+   */
+  async sendText(text: string): Promise<void> {
+    if (this.useLiveAPI && this.liveAudioClient?.connected) {
+      this.liveAudioClient.sendText(text);
+    } else {
+      // Process as regular text
+      await this.processTextWithGemini(text);
+    }
+  }
+
+  /**
+   * Update live context
+   */
+  updateLiveContext(context: string): void {
+    if (this.liveAudioClient) {
+      this.liveAudioClient.updateContext(context);
+    }
+  }
+
+  /**
    * Cleanup resources
    */
   cleanup(): void {
     this.isStreaming = false;
     this.currentAudioBuffer = [];
     this.conversationHistory = [];
+    
+    if (this.liveAudioClient) {
+      this.liveAudioClient.disconnect();
+      this.liveAudioClient = null;
+    }
   }
 }
