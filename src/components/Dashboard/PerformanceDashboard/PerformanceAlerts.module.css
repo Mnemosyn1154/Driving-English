@@ -1,0 +1,265 @@
+.container {
+  margin-bottom: 30px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.header h3 {
+  font-size: 1.8rem;
+  color: #e0e0e0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.badge {
+  background: #f87171;
+  color: white;
+  border-radius: 50%;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  min-width: 20px;
+  text-align: center;
+}
+
+.filters {
+  display: flex;
+  gap: 10px;
+}
+
+.filters button {
+  padding: 8px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  color: #a0a0a0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+}
+
+.filters button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e0e0e0;
+}
+
+.filters button.active {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: #3b82f6;
+  color: #60a5fa;
+}
+
+.alertsList {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.alert {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.alert:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.alert.error {
+  border-left: 4px solid #f87171;
+}
+
+.alert.warning {
+  border-left: 4px solid #fbbf24;
+}
+
+.alert.info {
+  border-left: 4px solid #60a5fa;
+}
+
+.alert.acknowledged {
+  opacity: 0.7;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.alert.acknowledged::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 10px,
+    rgba(255, 255, 255, 0.02) 10px,
+    rgba(255, 255, 255, 0.02) 20px
+  );
+  pointer-events: none;
+}
+
+.alertContent {
+  flex: 1;
+  margin-right: 20px;
+}
+
+.alertHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.alertTitle {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #e0e0e0;
+}
+
+.alertTime {
+  font-size: 0.9rem;
+  color: #a0a0a0;
+}
+
+.alertMessage {
+  color: #c0c0c0;
+  line-height: 1.5;
+  margin-bottom: 15px;
+}
+
+.alertMetrics {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+}
+
+.metric {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: #60a5fa;
+  font-weight: 500;
+}
+
+.value {
+  color: #fbbf24;
+  font-weight: 600;
+}
+
+.threshold {
+  color: #a0a0a0;
+}
+
+.alertActions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.acknowledgeBtn {
+  padding: 8px 16px;
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid #22c55e;
+  color: #4ade80;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+}
+
+.acknowledgeBtn:hover {
+  background: rgba(34, 197, 94, 0.3);
+}
+
+.dismissBtn {
+  padding: 8px 16px;
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid #ef4444;
+  color: #f87171;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+}
+
+.dismissBtn:hover {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+.noAlerts {
+  text-align: center;
+  color: #a0a0a0;
+  font-style: italic;
+  padding: 40px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: flex-start;
+  }
+  
+  .filters {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .filters button {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+  
+  .alert {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .alertContent {
+    margin-right: 0;
+  }
+  
+  .alertActions {
+    flex-direction: row;
+    align-self: stretch;
+  }
+  
+  .alertActions button {
+    flex: 1;
+  }
+  
+  .alertMetrics {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .alertHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+  
+  .alertTitle {
+    font-size: 1.1rem;
+  }
+}

@@ -139,7 +139,7 @@ export class NewsService {
       where: { id: articleId },
       include: {
         source: true,
-        sentences: {
+        sentenceModels: {
           orderBy: { order: 'asc' },
         },
       },
@@ -149,13 +149,20 @@ export class NewsService {
       return null;
     }
 
+    // Transform sentenceModels to sentences for API compatibility
+    const transformedArticle = {
+      ...article,
+      sentences: article.sentenceModels,
+      sentenceModels: undefined // Remove to avoid duplication
+    };
+
     // Track access
     await prisma.cacheEntry.upsert({
       where: { key: cacheKey },
       create: {
         key: cacheKey,
         type: 'NEWS',
-        size: JSON.stringify(article).length,
+        size: JSON.stringify(transformedArticle).length,
         expiresAt: new Date(Date.now() + 3600 * 1000), // 1 hour
       },
       update: {
@@ -165,9 +172,9 @@ export class NewsService {
     });
 
     // Cache for 1 hour
-    await cacheSet(cacheKey, JSON.stringify(article), 3600);
+    await cacheSet(cacheKey, JSON.stringify(transformedArticle), 3600);
 
-    return article;
+    return transformedArticle;
   }
 
   /**
@@ -189,8 +196,8 @@ export class NewsService {
     if (!user) {
       // Return default recommendations
       return this.getArticles(
-        { difficulty: 3, isProcessed: true },
-        { limit, orderBy: 'publishedAt' }
+        { isProcessed: true },
+        { limit, orderBy: 'publishedAt', order: 'desc' }
       );
     }
 
@@ -202,21 +209,20 @@ export class NewsService {
       .filter(p => p.key === 'preferred_category')
       .map(p => p.value);
 
-    // Find articles matching user level that haven't been completed
+    // Find articles that haven't been completed
+    // Since difficulty field is not properly set, just filter by processed articles
     const recommendations = await prisma.article.findMany({
       where: {
         isProcessed: true,
-        difficulty: {
-          gte: Math.max(1, user.preferredLevel - 1),
-          lte: Math.min(5, user.preferredLevel + 1),
-        },
         id: { notIn: completedIds },
         ...(preferredCategories.length > 0 && {
           category: { in: preferredCategories },
         }),
       },
+      include: {
+        source: true,
+      },
       orderBy: [
-        { difficulty: 'asc' },
         { publishedAt: 'desc' },
       ],
       take: limit,
@@ -393,7 +399,7 @@ export class NewsService {
       where,
       include: {
         source: true,
-        sentences: {
+        sentenceModels: {
           take: 3,
           orderBy: { order: 'asc' }
         }
@@ -405,8 +411,15 @@ export class NewsService {
 
     const total = await prisma.article.count({ where });
 
+    // Transform sentenceModels to sentences for API compatibility
+    const transformedArticles = articles.map(article => ({
+      ...article,
+      sentences: article.sentenceModels,
+      sentenceModels: undefined
+    }));
+
     // Score articles based on keywords
-    const scoredArticles = articles.map(article => {
+    const scoredArticles = transformedArticles.map(article => {
       let score = 0;
       
       // Keyword matching

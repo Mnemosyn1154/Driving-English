@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
     const { source, category, count = 5, userId, deviceId } = await request.json();
     
     let feedUrls: string[] = [];
-    let sourceInfo: { name?: string; category?: string } = {};
+    const sourceInfo: { name?: string; category?: string } = {};
     
     // 1. 특정 소스 검색
     if (source) {

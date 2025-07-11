@@ -1,0 +1,132 @@
+.container {
+  margin-bottom: 30px;
+}
+
+.container h2 {
+  font-size: 1.8rem;
+  margin-bottom: 20px;
+  color: #e0e0e0;
+  text-align: center;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.metric {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 20px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.metric:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.metric.good {
+  border-left: 4px solid #4ade80;
+}
+
+.metric.needs-improvement {
+  border-left: 4px solid #fbbf24;
+}
+
+.metric.poor {
+  border-left: 4px solid #f87171;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #e0e0e0;
+}
+
+.trend {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.trend.up {
+  color: #f87171;
+}
+
+.trend.down {
+  color: #4ade80;
+}
+
+.trend.stable {
+  color: #a0a0a0;
+}
+
+.value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 5px;
+  color: white;
+  line-height: 1;
+}
+
+.subtitle {
+  font-size: 0.9rem;
+  color: #a0a0a0;
+  line-height: 1.2;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100px;
+  color: #a0a0a0;
+  font-style: italic;
+}
+
+/* Animation for real-time updates */
+.metric::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.5s;
+}
+
+.metric.updating::after {
+  left: 100%;
+}
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+  }
+  
+  .metric {
+    padding: 15px;
+  }
+  
+  .value {
+    font-size: 2rem;
+  }
+  
+  .title {
+    font-size: 1rem;
+  }
+}

@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { PWAVoiceStatus } from '@/components/PWAVoiceStatus';
 import styles from './Header.module.css';
 
 export const Header: React.FC = () => {
@@ -54,6 +55,9 @@ export const Header: React.FC = () => {
         </nav>
 
         <div className={styles.actions}>
+          {/* PWA Voice Status - 네비게이션 바에 통합 */}
+          <PWAVoiceStatus variant="navbar" className={styles.voiceStatus} />
+          
           {loading ? (
             <span className={styles.loading}>로딩중...</span>
           ) : isAuthenticated ? (

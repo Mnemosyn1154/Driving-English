@@ -50,6 +50,18 @@
   border-radius: 8px;
 }
 
+/* 추천 기사 없음 상태 */
+.noRecommendations {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+}
+
+.noRecommendations p {
+  margin: 8px 0;
+  font-size: 14px;
+}
+
 @keyframes loading {
   0% {
     background-position: 200% 0;

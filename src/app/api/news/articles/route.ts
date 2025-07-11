@@ -4,11 +4,12 @@ import { isMockMode } from '@/lib/env';
 import { mockArticles } from '@/services/server/mock/mockData';
 import { initializeServices } from '@/services/server/startup';
 import { getAuthContext } from '@/lib/api-auth';
+import { prisma } from '@/services/server/database/prisma';
 
 export async function GET(request: NextRequest) {
   try {
-    // Initialize services on first request
-    await initializeServices();
+    // Skip service initialization for performance
+    // await initializeServices();
     
     const searchParams = request.nextUrl.searchParams;
     const type = searchParams.get('type'); // New parameter for article type
@@ -110,12 +111,24 @@ export async function GET(request: NextRequest) {
         
         if (!auth.isAuthenticated) {
           // Return default recommendations for non-authenticated users
-          return NextResponse.json(
-            await newsService.getArticles(
-              { difficulty: 3, isProcessed: true },
-              { limit, orderBy: 'publishedAt' }
-            )
-          );
+          // Direct query for better performance
+          const articles = await prisma.article.findMany({
+            where: { isProcessed: true },
+            include: { source: true },
+            orderBy: { publishedAt: 'desc' },
+            take: limit,
+          });
+          
+          return NextResponse.json({
+            articles,
+            pagination: {
+              page: 1,
+              limit,
+              total: articles.length,
+              hasNext: false,
+              hasPrevious: false,
+            }
+          });
         }
         
         return NextResponse.json(

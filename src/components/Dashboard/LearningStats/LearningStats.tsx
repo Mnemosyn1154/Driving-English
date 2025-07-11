@@ -8,6 +8,10 @@ interface Stats {
   weekMinutes: number;
   streak: number;
   totalArticles: number;
+  weeklyData: Array<{
+    day: string;
+    minutes: number;
+  }>;
 }
 
 export const LearningStats: React.FC = () => {
@@ -15,31 +19,72 @@ export const LearningStats: React.FC = () => {
     todayMinutes: 0,
     weekMinutes: 0,
     streak: 0,
-    totalArticles: 0
+    totalArticles: 0,
+    weeklyData: []
   });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // TODO: API에서 실제 통계 가져오기
-    // 임시 데이터
-    setStats({
-      todayMinutes: 25,
-      weekMinutes: 180,
-      streak: 7,
-      totalArticles: 42
-    });
+    const fetchStats = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        const response = await fetch('/api/stats/learning');
+        if (!response.ok) {
+          throw new Error('Failed to fetch learning stats');
+        }
+        
+        const data = await response.json();
+        setStats(data);
+      } catch (error) {
+        console.error('Error fetching learning stats:', error);
+        setError('학습 통계를 불러오는데 실패했습니다.');
+        
+        // 에러 시 기본값 설정
+        setStats({
+          todayMinutes: 0,
+          weekMinutes: 0,
+          streak: 0,
+          totalArticles: 0,
+          weeklyData: [
+            { day: '월', minutes: 0 },
+            { day: '화', minutes: 0 },
+            { day: '수', minutes: 0 },
+            { day: '목', minutes: 0 },
+            { day: '금', minutes: 0 },
+            { day: '토', minutes: 0 },
+            { day: '일', minutes: 0 },
+          ]
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStats();
   }, []);
 
-  const weeklyData = [
-    { day: '월', minutes: 30 },
-    { day: '화', minutes: 45 },
-    { day: '수', minutes: 20 },
-    { day: '목', minutes: 35 },
-    { day: '금', minutes: 25 },
-    { day: '토', minutes: 15 },
-    { day: '일', minutes: 25 },
-  ];
+  const maxMinutes = Math.max(...stats.weeklyData.map(d => d.minutes));
 
-  const maxMinutes = Math.max(...weeklyData.map(d => d.minutes));
+  if (isLoading) {
+    return (
+      <div className={styles.container}>
+        <h2 className={styles.title}>📊 학습 통계</h2>
+        <div className={styles.loading}>통계를 불러오는 중...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={styles.container}>
+        <h2 className={styles.title}>📊 학습 통계</h2>
+        <div className={styles.error}>{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
@@ -65,12 +110,12 @@ export const LearningStats: React.FC = () => {
       <div className={styles.weeklyChart}>
         <h3>이번 주 학습 시간</h3>
         <div className={styles.chart}>
-          {weeklyData.map((data, index) => (
+          {stats.weeklyData.map((data, index) => (
             <div key={index} className={styles.chartBar}>
               <div 
                 className={styles.bar}
                 style={{ 
-                  height: `${(data.minutes / maxMinutes) * 100}%`,
+                  height: maxMinutes > 0 ? `${(data.minutes / maxMinutes) * 100}%` : '0%',
                   background: index === 6 ? '#667eea' : '#e0e0e0'
                 }}
               >

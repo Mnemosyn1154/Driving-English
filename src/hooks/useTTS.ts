@@ -4,6 +4,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { usePerformanceTracking } from '@/components/layout/PerformanceProvider';
 
 export interface TTSOptions {
   language: string;
@@ -46,9 +47,13 @@ export function useTTS(defaultOptions: TTSOptions): UseTTSReturn {
   const [error, setError] = useState<Error | null>(null);
   const [currentText, setCurrentText] = useState<string | null>(null);
 
+  // Performance tracking
+  const { trackVoicePerformance } = usePerformanceTracking();
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const cacheRef = useRef<AudioCache>({});
   const optionsRef = useRef<TTSOptions>(defaultOptions);
+  const ttsStartTimeRef = useRef<number>(0);
 
   // Update options
   useEffect(() => {
@@ -99,6 +104,9 @@ export function useTTS(defaultOptions: TTSOptions): UseTTSReturn {
       }
 
       setIsSynthesizing(true);
+
+      // Track TTS start time
+      ttsStartTimeRef.current = performance.now();
 
       // Call TTS API
       const response = await fetch('/api/tts/synthesize', {
@@ -165,6 +173,12 @@ export function useTTS(defaultOptions: TTSOptions): UseTTSReturn {
       }
 
       audioRef.current = audio;
+
+      // Track TTS success
+      if (ttsStartTimeRef.current > 0) {
+        const endTime = performance.now();
+        trackVoicePerformance('tts', ttsStartTimeRef.current, endTime, true);
+      }
       
       // Auto-play if requested
       if (finalOptions.autoPlay !== false) {
@@ -172,6 +186,12 @@ export function useTTS(defaultOptions: TTSOptions): UseTTSReturn {
       }
     } catch (err) {
       console.error('TTS synthesis error:', err);
+      
+      // Track TTS error
+      if (ttsStartTimeRef.current > 0) {
+        const endTime = performance.now();
+        trackVoicePerformance('tts', ttsStartTimeRef.current, endTime, false);
+      }
       setError(err as Error);
     } finally {
       setIsSynthesizing(false);

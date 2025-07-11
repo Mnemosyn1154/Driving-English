@@ -65,53 +65,110 @@ export class RSSSourceService {
     enabled?: boolean;
     type?: 'RSS' | 'USER_RSS' | 'ALL';
   }): Promise<RSSSource[]> {
-    const where: any = {};
+    const sources: RSSSource[] = [];
 
-    if (options?.userId) {
-      where.OR = [
-        { type: 'RSS' }, // System sources
-        { type: 'USER_RSS', userId: options.userId }, // User sources
-      ];
-    } else if (options?.type && options.type !== 'ALL') {
-      where.type = options.type;
+    // Get system RSS sources
+    if (!options?.type || options.type === 'RSS' || options.type === 'ALL') {
+      const systemWhere: any = { type: 'RSS' };
+      
+      if (options?.category) {
+        systemWhere.category = options.category;
+      }
+      
+      if (options?.enabled !== undefined) {
+        systemWhere.enabled = options.enabled;
+      }
+
+      const systemSources = await prisma.newsSource.findMany({
+        where: systemWhere,
+        orderBy: [{ name: 'asc' }],
+      });
+
+      sources.push(...systemSources.map(source => ({
+        ...source,
+        type: 'RSS' as const,
+        userId: null,
+      })));
     }
 
-    if (options?.category) {
-      where.category = options.category;
+    // Get user RSS sources
+    if (options?.userId && (!options?.type || options.type === 'USER_RSS' || options.type === 'ALL')) {
+      const userWhere: any = { userId: options.userId };
+      
+      if (options?.category) {
+        userWhere.category = options.category;
+      }
+      
+      if (options?.enabled !== undefined) {
+        userWhere.enabled = options.enabled;
+      }
+
+      const userFeeds = await prisma.userRssFeed.findMany({
+        where: userWhere,
+        orderBy: [{ name: 'asc' }],
+      });
+
+      sources.push(...userFeeds.map(feed => ({
+        id: feed.id,
+        name: feed.name,
+        url: feed.url,
+        category: feed.category || 'general',
+        enabled: feed.enabled,
+        type: 'USER_RSS' as const,
+        userId: feed.userId,
+        lastFetch: null,
+        lastError: null,
+        updateInterval: 30,
+        createdAt: feed.createdAt,
+        updatedAt: feed.updatedAt,
+      })));
     }
 
-    if (options?.enabled !== undefined) {
-      where.enabled = options.enabled;
-    }
-
-    const sources = await prisma.newsSource.findMany({
-      where,
-      orderBy: [
-        { type: 'asc' }, // System sources first
-        { name: 'asc' },
-      ],
-    });
-
-    return sources as RSSSource[];
+    return sources;
   }
 
   /**
    * Get RSS source by ID
    */
   async getSourceById(id: string, userId?: string): Promise<RSSSource | null> {
-    const source = await prisma.newsSource.findFirst({
-      where: {
-        id,
-        ...(userId && {
-          OR: [
-            { type: 'RSS' },
-            { type: 'USER_RSS', userId },
-          ],
-        }),
-      },
+    // Try system sources first
+    const systemSource = await prisma.newsSource.findFirst({
+      where: { id, type: 'RSS' },
     });
 
-    return source as RSSSource | null;
+    if (systemSource) {
+      return {
+        ...systemSource,
+        type: 'RSS' as const,
+        userId: null,
+      };
+    }
+
+    // Try user sources if userId is provided
+    if (userId) {
+      const userFeed = await prisma.userRssFeed.findFirst({
+        where: { id, userId },
+      });
+
+      if (userFeed) {
+        return {
+          id: userFeed.id,
+          name: userFeed.name,
+          url: userFeed.url,
+          category: userFeed.category || 'general',
+          enabled: userFeed.enabled,
+          type: 'USER_RSS' as const,
+          userId: userFeed.userId,
+          lastFetch: null,
+          lastError: null,
+          updateInterval: 30,
+          createdAt: userFeed.createdAt,
+          updatedAt: userFeed.updatedAt,
+        };
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -132,34 +189,70 @@ export class RSSSourceService {
       throw new Error('Invalid URL format');
     }
 
-    // Check for duplicates
-    const existing = await prisma.newsSource.findFirst({
-      where: {
-        url: data.url,
-        ...(data.userId ? { userId: data.userId } : { type: 'RSS' }),
-      },
-    });
+    if (data.userId) {
+      // Create user RSS feed
+      const existingUserFeed = await prisma.userRssFeed.findFirst({
+        where: { url: data.url, userId: data.userId },
+      });
 
-    if (existing) {
-      throw new Error('RSS source with this URL already exists');
+      if (existingUserFeed) {
+        throw new Error('RSS source with this URL already exists');
+      }
+
+      const userFeed = await prisma.userRssFeed.create({
+        data: {
+          name: data.name,
+          url: data.url,
+          category: data.category,
+          userId: data.userId,
+          enabled: data.enabled ?? true,
+        },
+      });
+
+      return {
+        id: userFeed.id,
+        name: userFeed.name,
+        url: userFeed.url,
+        category: userFeed.category || 'general',
+        enabled: userFeed.enabled,
+        type: 'USER_RSS' as const,
+        userId: userFeed.userId,
+        lastFetch: null,
+        lastError: null,
+        updateInterval: 30,
+        createdAt: userFeed.createdAt,
+        updatedAt: userFeed.updatedAt,
+      };
+    } else {
+      // Create system RSS source
+      const existingSystemSource = await prisma.newsSource.findFirst({
+        where: { url: data.url, type: 'RSS' },
+      });
+
+      if (existingSystemSource) {
+        throw new Error('RSS source with this URL already exists');
+      }
+
+      const source = await prisma.newsSource.create({
+        data: {
+          name: data.name,
+          url: data.url,
+          category: data.category,
+          type: 'RSS',
+          enabled: data.enabled ?? true,
+          updateInterval: data.updateInterval ?? 30,
+        },
+      });
+
+      // Clear provider cache to reload sources
+      ProviderFactory.clearCache();
+
+      return {
+        ...source,
+        type: 'RSS' as const,
+        userId: null,
+      };
     }
-
-    const source = await prisma.newsSource.create({
-      data: {
-        name: data.name,
-        url: data.url,
-        category: data.category,
-        type: data.userId ? 'USER_RSS' : 'RSS',
-        userId: data.userId,
-        enabled: data.enabled ?? true,
-        updateInterval: data.updateInterval ?? 30,
-      },
-    });
-
-    // Clear provider cache to reload sources
-    ProviderFactory.clearCache();
-
-    return source as RSSSource;
   }
 
   /**
@@ -185,20 +278,52 @@ export class RSSSourceService {
       throw new Error('Unauthorized to update this source');
     }
 
-    const updated = await prisma.newsSource.update({
-      where: { id },
-      data: {
-        ...(data.name !== undefined && { name: data.name }),
-        ...(data.category !== undefined && { category: data.category }),
-        ...(data.enabled !== undefined && { enabled: data.enabled }),
-        ...(data.updateInterval !== undefined && { updateInterval: data.updateInterval }),
-      },
-    });
+    if (existing.type === 'USER_RSS') {
+      // Update user RSS feed
+      const updated = await prisma.userRssFeed.update({
+        where: { id },
+        data: {
+          ...(data.name !== undefined && { name: data.name }),
+          ...(data.category !== undefined && { category: data.category }),
+          ...(data.enabled !== undefined && { enabled: data.enabled }),
+        },
+      });
 
-    // Clear provider cache
-    ProviderFactory.clearCache();
+      return {
+        id: updated.id,
+        name: updated.name,
+        url: updated.url,
+        category: updated.category || 'general',
+        enabled: updated.enabled,
+        type: 'USER_RSS' as const,
+        userId: updated.userId,
+        lastFetch: null,
+        lastError: null,
+        updateInterval: 30,
+        createdAt: updated.createdAt,
+        updatedAt: updated.updatedAt,
+      };
+    } else {
+      // Update system RSS source
+      const updated = await prisma.newsSource.update({
+        where: { id },
+        data: {
+          ...(data.name !== undefined && { name: data.name }),
+          ...(data.category !== undefined && { category: data.category }),
+          ...(data.enabled !== undefined && { enabled: data.enabled }),
+          ...(data.updateInterval !== undefined && { updateInterval: data.updateInterval }),
+        },
+      });
 
-    return updated as RSSSource;
+      // Clear provider cache
+      ProviderFactory.clearCache();
+
+      return {
+        ...updated,
+        type: 'RSS' as const,
+        userId: null,
+      };
+    }
   }
 
   /**
@@ -215,15 +340,23 @@ export class RSSSourceService {
       throw new Error('Unauthorized to delete this source');
     }
 
-    // Delete associated articles (optional - might want to keep them)
-    // await prisma.article.deleteMany({ where: { sourceId: id } });
+    if (existing.type === 'USER_RSS') {
+      // Delete user RSS feed
+      await prisma.userRssFeed.delete({
+        where: { id },
+      });
+    } else {
+      // Delete system RSS source
+      // Delete associated articles (optional - might want to keep them)
+      // await prisma.article.deleteMany({ where: { sourceId: id } });
 
-    await prisma.newsSource.delete({
-      where: { id },
-    });
+      await prisma.newsSource.delete({
+        where: { id },
+      });
 
-    // Clear provider cache
-    ProviderFactory.clearCache();
+      // Clear provider cache
+      ProviderFactory.clearCache();
+    }
   }
 
   /**

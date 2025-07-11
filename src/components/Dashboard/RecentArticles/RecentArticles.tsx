@@ -19,53 +19,27 @@ export const RecentArticles: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // TODO: API에서 실제 최근 읽은 기사 가져오기
-    // 임시 데이터
-    setTimeout(() => {
-      setArticles([
-        {
-          id: '1',
-          title: 'Tech Giants Report Record Profits Despite Economic Uncertainty',
-          source: 'TechCrunch',
-          readAt: '2시간 전',
-          completionRate: 100,
-          bookmarked: true
-        },
-        {
-          id: '2',
-          title: 'Climate Scientists Warn of Accelerating Global Warming',
-          source: 'BBC News',
-          readAt: '5시간 전',
-          completionRate: 75,
-          bookmarked: false
-        },
-        {
-          id: '3',
-          title: 'New AI Model Achieves Breakthrough in Language Understanding',
-          source: 'MIT Tech Review',
-          readAt: '어제',
-          completionRate: 100,
-          bookmarked: true
-        },
-        {
-          id: '4',
-          title: 'Global Markets React to Federal Reserve Decision',
-          source: 'Reuters Business',
-          readAt: '2일 전',
-          completionRate: 50,
-          bookmarked: false
-        },
-        {
-          id: '5',
-          title: 'Space Exploration: New Discoveries from Mars Rover',
-          source: 'NASA News',
-          readAt: '3일 전',
-          completionRate: 100,
-          bookmarked: false
+    const fetchRecentArticles = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/articles/recent?limit=5');
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch recent articles');
         }
-      ]);
-      setLoading(false);
-    }, 500);
+        
+        const data = await response.json();
+        setArticles(data.articles);
+      } catch (error) {
+        console.error('Error fetching recent articles:', error);
+        // 에러 시 빈 배열 설정
+        setArticles([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRecentArticles();
   }, []);
 
   const handleArticleClick = (articleId: string) => {

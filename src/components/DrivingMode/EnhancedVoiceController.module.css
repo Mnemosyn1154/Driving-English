@@ -1,0 +1,326 @@
+/* 음성 컨트롤러 메인 컨테이너 */
+.voiceController {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  pointer-events: none;
+}
+
+/* 음성 상태 표시 */
+.voiceStatus {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+/* 웨이크워드 감지 표시 */
+.wakeWordIndicator {
+  background-color: #4a9eff;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  animation: wakeWordPulse 1s ease-in-out;
+  box-shadow: 0 4px 15px rgba(74, 158, 255, 0.4);
+}
+
+@keyframes wakeWordPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.9; }
+}
+
+/* 음성 인식 상태 표시 */
+.listeningIndicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background-color: rgba(45, 213, 115, 0.9);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 25px;
+  font-size: 14px;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(45, 213, 115, 0.3);
+  animation: listeningPulse 2s infinite;
+}
+
+@keyframes listeningPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+/* 음성 레벨 바 */
+.voiceLevelBar {
+  width: 100px;
+  height: 4px;
+  background-color: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.voiceLevelFill {
+  height: 100%;
+  background: linear-gradient(90deg, #2ed573, #00d4aa);
+  border-radius: 2px;
+  transition: width 0.1s ease;
+  animation: voiceLevelGlow 1s infinite alternate;
+}
+
+@keyframes voiceLevelGlow {
+  0% { box-shadow: 0 0 5px rgba(45, 213, 115, 0.5); }
+  100% { box-shadow: 0 0 15px rgba(45, 213, 115, 0.8); }
+}
+
+/* 처리 중 표시 */
+.processingIndicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: rgba(255, 193, 7, 0.9);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+}
+
+.processingSpinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 피드백 메시지 */
+.feedbackMessage {
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  max-width: 300px;
+  text-align: center;
+  animation: feedbackSlide 0.3s ease-out;
+}
+
+@keyframes feedbackSlide {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 마지막 명령 표시 */
+.lastCommand {
+  background-color: rgba(74, 158, 255, 0.9);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 10px rgba(74, 158, 255, 0.3);
+  animation: lastCommandFade 0.5s ease-out;
+}
+
+@keyframes lastCommandFade {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* 연결 상태 표시 */
+.connectionStatus {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+}
+
+.statusDot {
+  font-size: 10px;
+  animation: statusBlink 2s infinite;
+}
+
+@keyframes statusBlink {
+  0%, 80% { opacity: 1; }
+  90% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.statusText {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* 고속 주행 경고 */
+.highSpeedWarning {
+  background-color: rgba(255, 71, 87, 0.9);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4);
+  animation: warningPulse 2s infinite;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+@keyframes warningPulse {
+  0%, 100% { transform: scale(1); background-color: rgba(255, 71, 87, 0.9); }
+  50% { transform: scale(1.05); background-color: rgba(255, 71, 87, 1); }
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .voiceController {
+    bottom: 80px;
+    left: 16px;
+    right: 16px;
+    transform: none;
+  }
+  
+  .listeningIndicator {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+  
+  .voiceLevelBar {
+    width: 80px;
+  }
+  
+  .feedbackMessage {
+    max-width: 250px;
+    font-size: 13px;
+  }
+  
+  .lastCommand {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+  
+  .connectionStatus {
+    font-size: 10px;
+  }
+  
+  .highSpeedWarning {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+}
+
+/* 접근성 - 고대비 모드 */
+@media (prefers-contrast: high) {
+  .listeningIndicator {
+    background-color: #00ff00;
+    color: #000000;
+    border: 2px solid #ffffff;
+  }
+  
+  .processingIndicator {
+    background-color: #ffff00;
+    color: #000000;
+    border: 2px solid #ffffff;
+  }
+  
+  .feedbackMessage {
+    background-color: #000000;
+    color: #ffffff;
+    border: 2px solid #ffffff;
+  }
+  
+  .highSpeedWarning {
+    background-color: #ff0000;
+    color: #ffffff;
+    border: 2px solid #ffffff;
+  }
+}
+
+/* 모션 감소 선호 */
+@media (prefers-reduced-motion: reduce) {
+  .wakeWordIndicator,
+  .listeningIndicator,
+  .processingSpinner,
+  .feedbackMessage,
+  .lastCommand,
+  .statusDot,
+  .highSpeedWarning {
+    animation: none !important;
+  }
+  
+  .voiceLevelFill {
+    animation: none !important;
+  }
+  
+  .processingSpinner {
+    border-top-color: transparent;
+  }
+}
+
+/* 다크 모드 */
+@media (prefers-color-scheme: dark) {
+  .connectionStatus {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+  }
+  
+  .feedbackMessage {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+  }
+}
+
+/* 포커스 관리 (키보드 네비게이션) */
+.voiceController:focus-within {
+  outline: 2px solid #4a9eff;
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+
+/* 터치 디바이스 최적화 */
+@media (pointer: coarse) {
+  .voiceController {
+    gap: 16px;
+  }
+  
+  .listeningIndicator,
+  .processingIndicator,
+  .feedbackMessage {
+    padding: 12px 20px;
+    font-size: 16px;
+  }
+  
+  .voiceLevelBar {
+    height: 6px;
+  }
+}

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { registerServiceWorker, serviceWorkerManager } from '@/utils/serviceWorker';
+// import { initializePerformanceOptimization } from '@/utils/serviceWorkerRegistration';
+// import { performanceOptimizer } from '@/services/optimization/performanceOptimizer';
 import { useToast } from '@/hooks/useToast';
 import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
@@ -35,16 +37,32 @@ export function ServiceWorkerProvider({ children }: { children: React.ReactNode 
       },
     });
 
+    // Initialize performance optimization
+    // initializePerformanceOptimization();
+
+    // Start performance optimization on app load
+    // const timer = setTimeout(() => {
+    //   performanceOptimizer.startOptimization();
+    // }, 2000); // Wait 2 seconds for app to load
+
     // Listen for app updates
     const handleCacheUpdate = (event: Event) => {
       const customEvent = event as CustomEvent;
       console.log('Cache updated:', customEvent.detail);
     };
 
+    const handlePerformanceOptimized = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      console.log('Performance optimized:', customEvent.detail);
+    };
+
     window.addEventListener('sw-cache-updated', handleCacheUpdate);
+    window.addEventListener('performance-optimized', handlePerformanceOptimized);
 
     return () => {
+      // clearTimeout(timer);
       window.removeEventListener('sw-cache-updated', handleCacheUpdate);
+      window.removeEventListener('performance-optimized', handlePerformanceOptimized);
     };
   }, [toast]);
 

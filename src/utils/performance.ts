@@ -2,7 +2,9 @@
  * Performance monitoring and optimization utilities
  */
 
-import { config, isDevelopment } from '@/lib/env';
+import { isDevelopment } from '@/lib/env';
+import { onCLS, onFCP, onINP, onLCP, onTTFB, Metric } from 'web-vitals';
+import { v4 as uuidv4 } from 'uuid';
 
 interface PerformanceMetrics {
   pageLoad: number;
@@ -11,17 +13,52 @@ interface PerformanceMetrics {
   timeToInteractive: number;
   cumulativeLayoutShift: number;
   firstInputDelay: number;
+  interactionToNextPaint?: number;
+  timeToFirstByte?: number;
+}
+
+interface VoiceMetrics {
+  sttDuration: number[];
+  ttsDuration: number[];
+  sttErrors: number;
+  ttsErrors: number;
+  totalSttCalls: number;
+  totalTtsCalls: number;
+}
+
+interface ApiMetrics {
+  [endpoint: string]: {
+    count: number;
+    totalDuration: number;
+    errors: number;
+    avgDuration?: number;
+  };
 }
 
 class PerformanceMonitor {
   private metrics: Partial<PerformanceMetrics> = {};
+  private voiceMetrics: VoiceMetrics = {
+    sttDuration: [],
+    ttsDuration: [],
+    sttErrors: 0,
+    ttsErrors: 0,
+    totalSttCalls: 0,
+    totalTtsCalls: 0
+  };
+  private apiMetrics: ApiMetrics = {};
   private observers: Map<string, PerformanceObserver> = new Map();
+  private sessionId: string = uuidv4();
+  private reportQueue: unknown[] = [];
+  private reportTimer?: NodeJS.Timeout;
 
   /**
    * Initialize performance monitoring
    */
   init() {
     if (typeof window === 'undefined') return;
+
+    // Initialize Web Vitals
+    this.initializeWebVitals();
 
     // Page load time
     window.addEventListener('load', () => {
@@ -31,15 +68,6 @@ class PerformanceMonitor {
       }
     });
 
-    // First Contentful Paint & Largest Contentful Paint
-    this.observePaintTimings();
-
-    // Cumulative Layout Shift
-    this.observeLayoutShift();
-
-    // First Input Delay
-    this.observeFirstInput();
-
     // Time to Interactive (approximation)
     this.measureTimeToInteractive();
 
@@ -48,86 +76,111 @@ class PerformanceMonitor {
   }
 
   /**
-   * Observe paint timings
+   * Initialize Web Vitals monitoring
    */
-  private observePaintTimings() {
-    if (!('PerformanceObserver' in window)) return;
+  private initializeWebVitals() {
+    // Core Web Vitals
+    onCLS((metric) => {
+      this.metrics.cumulativeLayoutShift = metric.value;
+      this.logMetric('CLS', metric);
+    });
 
-    try {
-      const paintObserver = new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-          if (entry.name === 'first-contentful-paint') {
-            this.metrics.firstContentfulPaint = entry.startTime;
-          } else if (entry.entryType === 'largest-contentful-paint') {
-            this.metrics.largestContentfulPaint = entry.startTime;
-          }
-        }
-      });
+    // FID is deprecated in web-vitals v5+, INP is the replacement
+    // onFID((metric) => {
+    //   this.metrics.firstInputDelay = metric.value;
+    //   this.logMetric('FID', metric);
+    // });
 
-      paintObserver.observe({ 
-        entryTypes: ['paint', 'largest-contentful-paint'] 
-      });
+    onFCP((metric) => {
+      this.metrics.firstContentfulPaint = metric.value;
+      this.logMetric('FCP', metric);
+    });
 
-      this.observers.set('paint', paintObserver);
-    } catch (error) {
-      console.error('Failed to observe paint timings:', error);
+    onINP((metric) => {
+      this.metrics.interactionToNextPaint = metric.value;
+      this.logMetric('INP', metric);
+    });
+
+    onLCP((metric) => {
+      this.metrics.largestContentfulPaint = metric.value;
+      this.logMetric('LCP', metric);
+    });
+
+    onTTFB((metric) => {
+      this.metrics.timeToFirstByte = metric.value;
+      this.logMetric('TTFB', metric);
+    });
+  }
+
+  private logMetric(name: string, metric: Metric) {
+    if (isDevelopment) {
+      console.log(`[Performance] ${name}: ${metric.value.toFixed(2)}ms`);
     }
   }
 
   /**
-   * Observe layout shift
+   * Track voice performance (STT/TTS)
    */
-  private observeLayoutShift() {
-    if (!('PerformanceObserver' in window)) return;
+  trackVoicePerformance(type: 'stt' | 'tts', startTime: number, endTime: number, success: boolean) {
+    const duration = endTime - startTime;
+    
+    if (type === 'stt') {
+      this.voiceMetrics.totalSttCalls++;
+      if (success) {
+        this.voiceMetrics.sttDuration.push(duration);
+      } else {
+        this.voiceMetrics.sttErrors++;
+      }
+    } else {
+      this.voiceMetrics.totalTtsCalls++;
+      if (success) {
+        this.voiceMetrics.ttsDuration.push(duration);
+      } else {
+        this.voiceMetrics.ttsErrors++;
+      }
+    }
 
-    try {
-      let clsValue = 0;
-      let clsEntries: PerformanceEntry[] = [];
-
-      const layoutShiftObserver = new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-          if (!(entry as any).hadRecentInput) {
-            clsValue += (entry as any).value;
-            clsEntries.push(entry);
-          }
-        }
-        this.metrics.cumulativeLayoutShift = clsValue;
-      });
-
-      layoutShiftObserver.observe({ 
-        type: 'layout-shift', 
-        buffered: true 
-      });
-
-      this.observers.set('layout-shift', layoutShiftObserver);
-    } catch (error) {
-      console.error('Failed to observe layout shift:', error);
+    if (isDevelopment) {
+      console.log(`[Voice Performance] ${type.toUpperCase()}: ${duration}ms (${success ? 'success' : 'failed'})`);
     }
   }
 
   /**
-   * Observe first input delay
+   * Track API call performance
    */
-  private observeFirstInput() {
-    if (!('PerformanceObserver' in window)) return;
+  trackApiCall(url: string, startTime: number, endTime: number, success: boolean) {
+    const duration = endTime - startTime;
+    const endpoint = new URL(url, window.location.origin).pathname;
+    
+    if (!this.apiMetrics[endpoint]) {
+      this.apiMetrics[endpoint] = {
+        count: 0,
+        totalDuration: 0,
+        errors: 0
+      };
+    }
+    
+    this.apiMetrics[endpoint].count++;
+    this.apiMetrics[endpoint].totalDuration += duration;
+    if (!success) {
+      this.apiMetrics[endpoint].errors++;
+    }
+    
+    // Calculate average duration
+    this.apiMetrics[endpoint].avgDuration = 
+      this.apiMetrics[endpoint].totalDuration / this.apiMetrics[endpoint].count;
 
-    try {
-      const firstInputObserver = new PerformanceObserver((list) => {
-        const firstInput = list.getEntries()[0];
-        if (firstInput) {
-          this.metrics.firstInputDelay = 
-            (firstInput as any).processingStart - firstInput.startTime;
-        }
-      });
+    if (isDevelopment) {
+      console.log(`[API Performance] ${endpoint}: ${duration}ms (${success ? 'success' : 'failed'})`);
+    }
+  }
 
-      firstInputObserver.observe({ 
-        type: 'first-input', 
-        buffered: true 
-      });
-
-      this.observers.set('first-input', firstInputObserver);
-    } catch (error) {
-      console.error('Failed to observe first input:', error);
+  /**
+   * Track custom metric
+   */
+  trackCustomMetric(name: string, value: number) {
+    if (isDevelopment) {
+      console.log(`[Custom Metric] ${name}: ${value}`);
     }
   }
 
@@ -187,34 +240,71 @@ class PerformanceMonitor {
   /**
    * Get current metrics
    */
-  getMetrics(): Partial<PerformanceMetrics> {
-    return { ...this.metrics };
+  getMetrics() {
+    return { 
+      webVitals: { ...this.metrics },
+      voiceMetrics: { ...this.voiceMetrics },
+      apiMetrics: { ...this.apiMetrics }
+    };
   }
 
   /**
    * Report metrics
    */
   private async report() {
-    const metrics = this.getMetrics();
+    const allMetrics = this.getMetrics();
+    
+    // Calculate voice performance averages
+    const voiceAvgMetrics = {
+      avgSttDuration: this.voiceMetrics.sttDuration.length > 0 
+        ? this.voiceMetrics.sttDuration.reduce((a, b) => a + b, 0) / this.voiceMetrics.sttDuration.length 
+        : 0,
+      avgTtsDuration: this.voiceMetrics.ttsDuration.length > 0
+        ? this.voiceMetrics.ttsDuration.reduce((a, b) => a + b, 0) / this.voiceMetrics.ttsDuration.length
+        : 0,
+      sttSuccessRate: this.voiceMetrics.totalSttCalls > 0
+        ? ((this.voiceMetrics.totalSttCalls - this.voiceMetrics.sttErrors) / this.voiceMetrics.totalSttCalls) * 100
+        : 0,
+      ttsSuccessRate: this.voiceMetrics.totalTtsCalls > 0
+        ? ((this.voiceMetrics.totalTtsCalls - this.voiceMetrics.ttsErrors) / this.voiceMetrics.totalTtsCalls) * 100
+        : 0
+    };
+
+    const report = {
+      sessionId: this.sessionId,
+      ...allMetrics,
+      voiceAvgMetrics,
+      url: window.location.href,
+      userAgent: navigator.userAgent,
+      timestamp: new Date().toISOString(),
+      connectionType: (navigator as { connection?: { effectiveType?: string } }).connection?.effectiveType
+    };
     
     // Log to console in development
     if (isDevelopment) {
-      console.log('Performance Metrics:', metrics);
+      console.log('Performance Report:', report);
     }
 
-    // Send to analytics or monitoring service
-    if ('sendBeacon' in navigator && config.features.analyticsEndpoint) {
-      const payload = JSON.stringify({
-        metrics,
-        url: window.location.href,
-        userAgent: navigator.userAgent,
-        timestamp: new Date().toISOString(),
+    // Try to send to API endpoint
+    try {
+      const response = await fetch('/api/performance/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(report),
+        keepalive: true
       });
 
-      navigator.sendBeacon(
-        config.features.analyticsEndpoint,
-        payload
-      );
+      if (!response.ok) {
+        throw new Error(`Failed to send report: ${response.status}`);
+      }
+
+      // Clear voice metrics after successful report
+      this.voiceMetrics.sttDuration = [];
+      this.voiceMetrics.ttsDuration = [];
+    } catch (error) {
+      console.error('[Performance] Failed to send report:', error);
+      // Store in queue for retry
+      this.reportQueue.push(report);
     }
   }
 
@@ -288,7 +378,7 @@ export const performanceUtils = {
   /**
    * Debounce function calls
    */
-  debounce<T extends (...args: any[]) => any>(
+  debounce<T extends (...args: unknown[]) => unknown>(
     func: T,
     wait: number
   ): (...args: Parameters<T>) => void {
@@ -303,7 +393,7 @@ export const performanceUtils = {
   /**
    * Throttle function calls
    */
-  throttle<T extends (...args: any[]) => any>(
+  throttle<T extends (...args: unknown[]) => unknown>(
     func: T,
     limit: number
   ): (...args: Parameters<T>) => void {

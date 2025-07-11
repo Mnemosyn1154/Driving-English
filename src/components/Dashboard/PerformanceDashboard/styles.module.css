@@ -1,0 +1,202 @@
+.dashboard {
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.tabNavigation {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 30px;
+  padding: 0 20px;
+}
+
+.tab {
+  padding: 10px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  color: #a0a0a0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+}
+
+.tab:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e0e0e0;
+}
+
+.activeTab {
+  padding: 10px 20px;
+  background: rgba(59, 130, 246, 0.2);
+  border: 1px solid #3b82f6;
+  color: #60a5fa;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+}
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  margin-bottom: 30px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.timeRangeSelector {
+  display: flex;
+  gap: 10px;
+}
+
+.timeRangeSelector button {
+  padding: 8px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: transparent;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.timeRangeSelector button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.timeRangeSelector button.active {
+  background: #667eea;
+  border-color: #667eea;
+}
+
+.refreshToggle {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.refreshToggle label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.refreshButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.refreshButton:hover {
+  background: #764ba2;
+}
+
+.connectionStatus {
+  font-size: 14px;
+}
+
+.connected {
+  color: #4ade80;
+}
+
+.disconnected {
+  color: #f87171;
+}
+
+.chartsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+  gap: 30px;
+  margin-top: 30px;
+}
+
+.chartCard {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 24px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.chartCard h2 {
+  font-size: 1.5rem;
+  margin-bottom: 20px;
+  color: #e0e0e0;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  color: #a0a0a0;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  color: #f87171;
+}
+
+.error button {
+  margin-top: 20px;
+  padding: 10px 20px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  .tabNavigation {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 15px;
+  }
+
+  .tab,
+  .activeTab {
+    padding: 8px 16px;
+    font-size: 0.8rem;
+  }
+
+  .controls {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .chartsGrid {
+    grid-template-columns: 1fr;
+  }
+}

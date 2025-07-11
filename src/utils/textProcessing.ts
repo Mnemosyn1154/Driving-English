@@ -25,7 +25,7 @@ export class TextProcessor {
     // Matches sentence endings followed by whitespace and capital letter or end of string
     const sentenceRegex = /([.!?]+)[\s]*(?=[A-Z]|$)/g;
     
-    let sentences: string[] = [];
+    const sentences: string[] = [];
     let lastIndex = 0;
     let match;
 

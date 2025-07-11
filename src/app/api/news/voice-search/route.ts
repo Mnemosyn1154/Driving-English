@@ -15,7 +15,7 @@ async function extractKeywords(transcript: string): Promise<string[]> {
   // 명령어 제거
   const commandWords = ['검색', '찾아', '찾아줘', '보여줘', '알려줘', '뉴스', '기사', '관련'];
   
-  let keywords = transcript
+  const keywords = transcript
     .split(/\s+/)
     .filter(word => word.length > 1)
     .filter(word => !stopWords.includes(word))

@@ -13,6 +13,8 @@ import {
   STTProvider,
   StreamingSTTConfig,
 } from '@/types/stt';
+import { usePerformanceTracking } from '@/components/layout/PerformanceProvider';
+import { useAnalytics } from '@/providers/AnalyticsProvider';
 
 export interface UseSTTOptions {
   provider?: STTProvider;
@@ -69,12 +71,17 @@ export function useSTT(options: UseSTTOptions = {}): UseSTTReturn {
   const [currentProvider, setCurrentProvider] = useState<STTProvider>(provider);
   const [audioLevel, setAudioLevel] = useState(0);
 
+  // Performance tracking
+  const { trackVoicePerformance } = usePerformanceTracking();
+  const { trackVoiceCommand } = useAnalytics();
+
   // Refs for persistent values
   const streamRef = useRef<STTStream | null>(null);
   const audioProcessorRef = useRef<AudioProcessor | null>(null);
   const audioAnalyzerRef = useRef<any>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const chunkerRef = useRef<any>(null);
+  const sttStartTimeRef = useRef<number>(0);
 
   // Initialize STT service
   useEffect(() => {
@@ -153,6 +160,26 @@ export function useSTT(options: UseSTTOptions = {}): UseSTTReturn {
           if (onResult) onResult(result);
         },
         onFinalResult: (result: STTResult) => {
+          // Track STT performance
+          if (sttStartTimeRef.current > 0) {
+            const endTime = performance.now();
+            const processingTime = endTime - sttStartTimeRef.current;
+            
+            trackVoicePerformance('stt', sttStartTimeRef.current, endTime, true);
+            
+            // Track voice command analytics
+            trackVoiceCommand({
+              command: result.transcript,
+              success: true,
+              confidence: result.confidence,
+              processingTime,
+              retryCount: 0,
+              context: 'learn' // This should be dynamic based on actual context
+            });
+            
+            sttStartTimeRef.current = performance.now(); // Reset for next utterance
+          }
+          
           setTranscript(prev => {
             const newTranscript = prev ? `${prev} ${result.transcript}` : result.transcript;
             return newTranscript;
@@ -162,6 +189,24 @@ export function useSTT(options: UseSTTOptions = {}): UseSTTReturn {
           if (onResult) onResult(result);
         },
         onError: (err: Error) => {
+          // Track STT error
+          if (sttStartTimeRef.current > 0) {
+            const endTime = performance.now();
+            const processingTime = endTime - sttStartTimeRef.current;
+            
+            trackVoicePerformance('stt', sttStartTimeRef.current, endTime, false);
+            
+            // Track voice command failure
+            trackVoiceCommand({
+              command: interimTranscript || '',
+              success: false,
+              confidence: 0,
+              processingTime,
+              retryCount: 0,
+              context: 'learn'
+            });
+          }
+          
           setError(err);
           if (onError) onError(err);
         },
@@ -170,6 +215,9 @@ export function useSTT(options: UseSTTOptions = {}): UseSTTReturn {
           setIsProcessing(false);
         },
       };
+
+      // Track STT start time
+      sttStartTimeRef.current = performance.now();
 
       // Create STT stream
       const sttStream = sttService.getService().createStream(config);

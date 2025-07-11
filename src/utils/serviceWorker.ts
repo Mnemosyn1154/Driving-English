@@ -31,8 +31,8 @@ class ServiceWorkerManager {
     }
 
     try {
-      // Register service worker
-      const registration = await navigator.serviceWorker.register('/sw.js', {
+      // Register enhanced service worker
+      const registration = await navigator.serviceWorker.register('/sw-enhanced.js', {
         scope: '/'
       });
 
@@ -134,8 +134,8 @@ class ServiceWorkerManager {
       }
       
       // Trigger background sync
-      this.triggerSync('sync-news');
-      this.triggerSync('sync-progress');
+      this.triggerSync('sync-api-requests');
+      this.triggerSync('sync-user-progress');
     });
 
     window.addEventListener('offline', () => {
@@ -183,7 +183,51 @@ class ServiceWorkerManager {
   async cacheUrls(urls: string[]) {
     await this.sendMessage({
       type: 'CACHE_URLS',
-      urls
+      payload: { urls }
+    });
+  }
+
+  /**
+   * Preload next audio files
+   */
+  async preloadNextAudio(audioUrls: string[]) {
+    await this.sendMessage({
+      type: 'PRELOAD_NEXT_AUDIO',
+      payload: { audioUrls }
+    });
+  }
+
+  /**
+   * Get cache statistics from service worker
+   */
+  async getCacheStatsFromSW(): Promise<any> {
+    return new Promise((resolve) => {
+      if (!navigator.serviceWorker.controller) {
+        resolve(null);
+        return;
+      }
+
+      const channel = new MessageChannel();
+      channel.port1.onmessage = (event) => {
+        if (event.data.type === 'CACHE_STATS') {
+          resolve(event.data.stats);
+        }
+      };
+
+      navigator.serviceWorker.controller.postMessage(
+        { type: 'GET_CACHE_STATS' },
+        [channel.port2]
+      );
+    });
+  }
+
+  /**
+   * Clear specific cache
+   */
+  async clearCache(cacheName?: string) {
+    await this.sendMessage({
+      type: 'CLEAR_CACHE',
+      payload: { cacheName }
     });
   }
 

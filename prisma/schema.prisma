@@ -22,37 +22,41 @@ model NewsSource {
 }
 
 model Article {
-  id              String         @id @default(uuid())
-  sourceId        String
-  title           String
-  titleKo         String?
-  summary         String
-  summaryKo       String?
-  content         String
-  url             String         @unique
-  imageUrl        String?
-  publishedAt     DateTime
-  wordCount       Int
-  readingTime     Int
-  category        String
-  tags            String[]
-  isProcessed     Boolean        @default(false)
-  processedAt     DateTime?
-  processingError String?
-  audioProcessed  Boolean        @default(false)
-  audioProcessedAt DateTime?
-  audioUrlEn      String?
-  audioUrlKo      String?
-  audioDuration   Int?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  source          NewsSource     @relation(fields: [sourceId], references: [id])
-  sentences       Sentence[]
-  userProgress    UserProgress[]
+  id                  String                  @id @default(uuid())
+  sourceId            String
+  title               String
+  titleKo             String?
+  summary             String
+  summaryKo           String?
+  content             String
+  url                 String                  @unique
+  imageUrl            String?
+  publishedAt         DateTime
+  wordCount           Int
+  readingTime         Int
+  category            String
+  difficulty          Int?
+  tags                String[]
+  sentences           Json?
+  isProcessed         Boolean                 @default(false)
+  processedAt         DateTime?
+  processingError     String?
+  audioProcessed      Boolean                 @default(false)
+  audioProcessedAt    DateTime?
+  audioUrlEn          String?
+  audioUrlKo          String?
+  audioDuration       Int?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  source              NewsSource              @relation(fields: [sourceId], references: [id])
+  sentenceModels      Sentence[]
+  userProgress        UserProgress[]
+  userArticleProgress UserArticleProgress[]
 
   @@index([publishedAt])
   @@index([category])
   @@index([isProcessed])
+  @@index([difficulty])
 }
 
 model Sentence {
@@ -73,22 +77,28 @@ model Sentence {
 }
 
 model User {
-  id             String           @id @default(uuid())
-  email          String?          @unique
-  name           String?
-  deviceId       String           @unique
-  dailyGoal      Int              @default(3)
-  studyTime      Int              @default(0)
-  lastActiveAt   DateTime?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  supabaseId     String?          @unique
-  newsSearches   NewsSearch[]
-  sessions       StudySession[]
-  keywords       UserKeyword[]
-  preferences    UserPreference[]
-  progress       UserProgress[]
-  rssFeeds       UserRssFeed[]
+  id                   String                  @id @default(uuid())
+  email                String?                 @unique
+  name                 String?
+  deviceId             String                  @unique
+  dailyGoal            Int                     @default(3)
+  studyTime            Int                     @default(0)
+  lastActiveAt         DateTime?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  supabaseId           String?                 @unique
+  newsSearches         NewsSearch[]
+  sessions             StudySession[]
+  keywords             UserKeyword[]
+  preferences          UserPreference[]
+  progress             UserProgress[]
+  rssFeeds             UserRssFeed[]
+  articleProgress      UserArticleProgress[]
+  learningSessions     LearningSession[]
+  dailyStats           DailyStats[]
+  performanceReports   PerformanceReport[]
+  analyticsEvents      AnalyticsEvent[]
+  analyticsSessions    AnalyticsSession[]
 }
 
 model UserProgress {
@@ -106,6 +116,65 @@ model UserProgress {
   @@unique([userId, articleId])
   @@index([userId])
   @@index([articleId])
+}
+
+model UserArticleProgress {
+  id                String    @id @default(uuid())
+  userId            String
+  articleId         String
+  currentSentence   Int       @default(0)
+  totalSentences    Int       @default(0)
+  progressPercentage Float    @default(0)
+  isCompleted       Boolean   @default(false)
+  isBookmarked      Boolean   @default(false)
+  lastReadAt        DateTime?
+  readingTime       Int       @default(0)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  user              User      @relation(fields: [userId], references: [id])
+  article           Article   @relation(fields: [articleId], references: [id])
+
+  @@unique([userId, articleId])
+  @@index([userId])
+  @@index([articleId])
+  @@index([lastReadAt])
+}
+
+model LearningSession {
+  id              String    @id @default(uuid())
+  userId          String
+  startTime       DateTime  @default(now())
+  endTime         DateTime?
+  durationMinutes Int       @default(0)
+  articlesRead    Int       @default(0)
+  sentencesRead   Int       @default(0)
+  mode            String    @default("learn") // learn, driving
+  deviceInfo      Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  user            User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([startTime])
+  @@index([mode])
+}
+
+model DailyStats {
+  id              String   @id @default(uuid())
+  userId          String
+  date            DateTime
+  studyMinutes    Int      @default(0)
+  articlesRead    Int      @default(0)
+  sentencesRead   Int      @default(0)
+  streakDays      Int      @default(0)
+  goalAchieved    Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@index([date])
 }
 
 model UserPreference {
@@ -200,6 +269,72 @@ model UserRssFeed {
   user      User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, url])
+}
+
+model PerformanceReport {
+  id               String   @id @default(uuid())
+  sessionId        String
+  userId           String?
+  url              String
+  userAgent        String
+  webVitals        Json
+  voiceMetrics     Json
+  apiMetrics       Json
+  voiceAvgMetrics  Json
+  connectionType   String?
+  timestamp        DateTime
+  createdAt        DateTime @default(now())
+  user             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([sessionId])
+  @@index([userId])
+  @@index([timestamp])
+  @@index([url])
+}
+
+model AnalyticsEvent {
+  id         String   @id @default(uuid())
+  eventId    String   @unique
+  type       String
+  category   String
+  action     String
+  label      String?
+  value      Float?
+  metadata   Json
+  timestamp  DateTime
+  sessionId  String
+  userId     String?
+  url        String
+  referrer   String?
+  createdAt  DateTime @default(now())
+  session    AnalyticsSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([sessionId])
+  @@index([userId])
+  @@index([type])
+  @@index([category])
+  @@index([timestamp])
+}
+
+model AnalyticsSession {
+  id         String   @id @default(uuid())
+  userId     String?
+  deviceId   String
+  startTime  DateTime
+  endTime    DateTime?
+  duration   Int?
+  pageViews  Int      @default(0)
+  events     Int      @default(0)
+  bounced    Boolean  @default(true)
+  deviceInfo Json
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  analyticsEvents AnalyticsEvent[]
+
+  @@index([userId])
+  @@index([deviceId])
+  @@index([startTime])
 }
 
 model NewsSearch {

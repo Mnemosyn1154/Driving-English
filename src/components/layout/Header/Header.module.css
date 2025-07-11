@@ -74,6 +74,11 @@
 .actions {
   display: flex;
   align-items: center;
+  gap: 12px;
+}
+
+.voiceStatus {
+  margin-right: 8px;
 }
 
 .loading {

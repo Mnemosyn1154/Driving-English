@@ -2,12 +2,6 @@
 
 운전 중 안전하게 영어를 학습할 수 있는 AI 기반 웹 서비스
 
-## 🚨 중요: ERR_CONNECTION_REFUSED 방지
-**개발 시작 전 반드시 [DEV_RULES.md](./DEV_RULES.md)를 읽어주세요!**
-- ❌ `http://localhost:3003` 사용 금지
-- ✅ `http://127.0.0.1:3003` 항상 사용
-- 📋 [완벽한 해결 가이드](./docs/ERR_CONNECTION_REFUSED_SOLUTION.md)
-
 ## 🚀 Quick Start
 
 ### 필수 요구사항

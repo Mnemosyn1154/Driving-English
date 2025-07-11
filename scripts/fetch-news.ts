@@ -62,7 +62,7 @@ async function fetchFromSource(source: any) {
             wordCount: wordCount,
             readingTime: calculateReadingTime(wordCount),
             category: source.category,
-            tags: item.categories || [],
+            tags: Array.isArray(item.categories) ? item.categories : [],
             isProcessed: false, // 번역 및 TTS 처리 대기
           }
         });

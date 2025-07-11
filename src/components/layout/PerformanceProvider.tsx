@@ -1,7 +1,16 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, createContext, useContext, useCallback } from 'react';
 import { usePerformance } from '@/hooks/usePerformance';
+import { performanceMonitor } from '@/utils/performance';
+
+interface PerformanceContextType {
+  trackApiCall: (url: string, startTime: number, endTime: number, success: boolean) => void;
+  trackVoicePerformance: (type: 'stt' | 'tts', startTime: number, endTime: number, success: boolean) => void;
+  trackCustomMetric: (name: string, value: number) => void;
+}
+
+const PerformanceContext = createContext<PerformanceContextType | null>(null);
 
 export function PerformanceProvider({ children }: { children: React.ReactNode }) {
   const { preconnect, preloadResources } = usePerformance({
@@ -28,5 +37,34 @@ export function PerformanceProvider({ children }: { children: React.ReactNode })
     // ]);
   }, [preconnect, preloadResources]);
 
-  return <>{children}</>;
+  const contextValue: PerformanceContextType = {
+    trackApiCall: useCallback((url, startTime, endTime, success) => {
+      performanceMonitor.trackApiCall(url, startTime, endTime, success);
+    }, []),
+    trackVoicePerformance: useCallback((type, startTime, endTime, success) => {
+      performanceMonitor.trackVoicePerformance(type, startTime, endTime, success);
+    }, []),
+    trackCustomMetric: useCallback((name, value) => {
+      performanceMonitor.trackCustomMetric(name, value);
+    }, [])
+  };
+
+  return (
+    <PerformanceContext.Provider value={contextValue}>
+      {children}
+    </PerformanceContext.Provider>
+  );
+}
+
+export function usePerformanceTracking() {
+  const context = useContext(PerformanceContext);
+  if (!context) {
+    // Return no-op functions if context is not available
+    return {
+      trackApiCall: () => {},
+      trackVoicePerformance: () => {},
+      trackCustomMetric: () => {}
+    };
+  }
+  return context;
 }

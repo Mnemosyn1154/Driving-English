@@ -102,11 +102,129 @@
   }
 }
 
+/* Loading state */
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  color: white;
+  text-align: center;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top: 4px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Error state */
+.error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  color: white;
+  text-align: center;
+  padding: 20px;
+}
+
+.error p {
+  margin-bottom: 20px;
+  font-size: 18px;
+}
+
+.retryButton {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s ease;
+}
+
+.retryButton:hover {
+  background: #5a67d8;
+}
+
+/* Progress indicator */
+.progressContainer {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  right: 20px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.progressBar {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.progressText {
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  min-width: 80px;
+  text-align: right;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px 8px;
+  border-radius: 4px;
+  backdrop-filter: blur(10px);
+}
+
 /* High contrast mode support */
 @media (prefers-contrast: high) {
+  .controlButton {
+    background-color: #000;
+    border-color: #fff;
+    border-width: 3px;
+  }
+  
   .exitButton {
     background-color: #000;
     border-color: #fff;
     border-width: 3px;
+  }
+  
+  .progressBar {
+    background: rgba(255, 255, 255, 0.4);
+    border: 1px solid #fff;
+  }
+  
+  .progressFill {
+    background: #fff;
+  }
+  
+  .progressText {
+    background: #000;
+    border: 1px solid #fff;
   }
 }

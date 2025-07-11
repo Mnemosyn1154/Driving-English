@@ -3,7 +3,7 @@ import { Server } from 'http';
 import { DrivingEnglishWebSocketServer } from '@/lib/websocket/server';
 
 // Store WebSocket server instance
-let wsServer: DrivingEnglishWebSocketServer | null = null;
+const wsServer: DrivingEnglishWebSocketServer | null = null;
 
 // This is a special handler for WebSocket upgrade
 export async function GET(request: NextRequest) {

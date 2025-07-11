@@ -6,6 +6,7 @@ import { useTTS } from '@/hooks/useTTS';
 import { useGeminiLiveAudio } from '@/hooks/useGeminiLiveAudio';
 import { useConversationContext } from '@/hooks/useConversationContext';
 import { useVoiceErrorHandler } from '@/hooks/useVoiceErrorHandler';
+import { useVoicePWAIntegration } from '@/hooks/usePWAIntegration';
 import { ChatInterface, ChatMessage } from './ChatInterface';
 import { ConversationMessage } from '@/types/websocket';
 import styles from './VoiceControl.module.css';
@@ -32,6 +33,14 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [wakeWordMode, setWakeWordMode] = useState<'ml' | 'energy' | 'hybrid'>('hybrid');
+  
+  // PWA Integration
+  const {
+    isOnline,
+    isOfflineReady,
+    preloadVoiceContent,
+    cacheStats,
+  } = useVoicePWAIntegration();
   
   // Conversation Context
   const {
