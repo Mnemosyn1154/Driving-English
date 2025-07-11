@@ -1,6 +1,6 @@
 # Task ID: 4
 # Title: 백그라운드 작업 시스템 구축 - Bull 큐를 활용한 뉴스 처리 파이프라인 자동화
-# Status: pending
+# Status: done
 # Dependencies: 1, 2, 3
 # Priority: medium
 # Description: Bull 큐 시스템을 활용하여 뉴스 수집, 번역, TTS 변환 작업을 비동기적으로 처리하는 백그라운드 작업 파이프라인을 구축합니다.

@@ -2,6 +2,8 @@ import { prisma } from '../database/prisma';
 import { cacheGet, cacheSet } from '../cache';
 import { newsQueue, processingQueue } from '../jobs/queue';
 import { Prisma } from '@prisma/client';
+import { newsAggregatorV2 } from './newsAggregatorV2';
+import { ProviderFactory } from './providers';
 
 export interface NewsFilters {
   category?: string;
@@ -313,5 +315,173 @@ export class NewsService {
         count: d._count,
       })),
     };
+  }
+
+  /**
+   * Get latest articles
+   */
+  async getLatestArticles(
+    filters: NewsFilters = {},
+    pagination: PaginationOptions = {}
+  ) {
+    // Force sort by publishedAt desc for latest articles
+    return this.getArticles(
+      filters,
+      {
+        ...pagination,
+        orderBy: 'publishedAt',
+        order: 'desc',
+      }
+    );
+  }
+
+  /**
+   * Get personalized articles for a user
+   */
+  async getPersonalizedArticles(
+    userId: string,
+    deviceId: string | null,
+    pagination: PaginationOptions = {}
+  ) {
+    // Get user preferences
+    let preferences = {
+      categories: [] as string[],
+      keywords: [] as string[],
+    };
+
+    if (userId) {
+      // Get from database
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          preferences: true,
+          keywords: {
+            orderBy: { weight: 'desc' },
+            take: 10
+          }
+        }
+      });
+
+      if (user) {
+        const categoriesPref = user.preferences.find(p => p.key === 'categories');
+        if (categoriesPref) {
+          preferences.categories = JSON.parse(categoriesPref.value);
+        }
+        
+        preferences.keywords = user.keywords.map(k => k.keyword);
+      }
+    } else {
+      // Default preferences for non-authenticated users
+      preferences = {
+        categories: ['technology', 'business', 'science'],
+        keywords: []
+      };
+    }
+
+    // Fetch articles based on preferences
+    const where: Prisma.ArticleWhereInput = {
+      isProcessed: true,
+      ...(preferences.categories.length > 0 && {
+        category: { in: preferences.categories }
+      }),
+      publishedAt: {
+        gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // Last 7 days
+      }
+    };
+
+    const articles = await prisma.article.findMany({
+      where,
+      include: {
+        source: true,
+        sentences: {
+          take: 3,
+          orderBy: { order: 'asc' }
+        }
+      },
+      orderBy: { publishedAt: 'desc' },
+      skip: ((pagination.page || 1) - 1) * (pagination.limit || 20),
+      take: pagination.limit || 20,
+    });
+
+    const total = await prisma.article.count({ where });
+
+    // Score articles based on keywords
+    const scoredArticles = articles.map(article => {
+      let score = 0;
+      
+      // Keyword matching
+      preferences.keywords.forEach(keyword => {
+        if (article.title.toLowerCase().includes(keyword.toLowerCase()) ||
+            article.summary.toLowerCase().includes(keyword.toLowerCase())) {
+          score += 10;
+        }
+      });
+      
+      // Recency score
+      const ageInDays = (Date.now() - article.publishedAt.getTime()) / (1000 * 60 * 60 * 24);
+      score += Math.max(0, 10 - ageInDays);
+      
+      return { ...article, score };
+    });
+
+    // Sort by score
+    scoredArticles.sort((a, b) => b.score - a.score);
+
+    return {
+      articles: scoredArticles.map(({ score, ...article }) => article),
+      preferences,
+      pagination: {
+        page: pagination.page || 1,
+        limit: pagination.limit || 20,
+        total,
+        totalPages: Math.ceil(total / (pagination.limit || 20)),
+        hasNext: ((pagination.page || 1) * (pagination.limit || 20)) < total,
+        hasPrevious: (pagination.page || 1) > 1,
+      },
+    };
+  }
+
+  /**
+   * Aggregate news using the new provider pattern
+   */
+  async aggregateNews(options?: {
+    categories?: string[];
+    providers?: string[];
+    force?: boolean;
+  }) {
+    return await newsAggregatorV2.aggregateNews(options);
+  }
+
+  /**
+   * Get aggregation statistics
+   */
+  async getAggregationStatistics() {
+    return await newsAggregatorV2.getStatistics();
+  }
+
+  /**
+   * Get available news providers
+   */
+  async getProviders() {
+    const providers = await ProviderFactory.getEnabledProviders();
+    return providers.map(provider => ({
+      name: provider.getName(),
+      enabled: provider.isEnabled(),
+      statistics: provider.getStatistics(),
+    }));
+  }
+
+  /**
+   * Refresh specific providers
+   */
+  async refreshProviders(providerNames?: string[]) {
+    // Clear provider cache to reload configuration
+    ProviderFactory.clearCache();
+    
+    // Run aggregation with specific providers
+    return await this.aggregateNews({
+      providers: providerNames,
+      force: true,
+    });
   }
 }

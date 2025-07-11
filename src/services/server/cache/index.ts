@@ -89,3 +89,7 @@ export const CACHE_TTL = {
   USER: 60 * 60,                 // 1시간
   STATS: 5 * 60                  // 5분
 } as const;
+
+// Export new cache service
+export { cacheService, CacheService, DomainCacheHelpers } from './CacheService';
+export type { CacheOptions, CachedData } from './CacheService';

@@ -6,6 +6,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
+import { config } from '@/lib/env';
 
 interface TranslationOptions {
   from?: string;
@@ -31,7 +32,7 @@ export class GeminiTranslator {
   private cacheTTL: number = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 
   constructor() {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = config.api.geminiApiKey;
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY is not configured');
     }

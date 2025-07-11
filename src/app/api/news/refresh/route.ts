@@ -1,26 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { NewsFetcher } from '@/services/server/news/fetcher';
+import { newsService } from '@/services/server/news/newsService';
+import { requireAuth } from '@/lib/api-auth';
 
 export async function POST(request: NextRequest) {
   try {
-    // TODO: Add authentication to protect this endpoint
+    // Check authentication
+    const auth = await requireAuth(request);
     
-    const fetcher = new NewsFetcher();
+    // Parse request body for options
+    const body = await request.json().catch(() => ({}));
+    const { categories, providers, force } = body;
     
-    // Fetch updates from sources that need refreshing
-    const results = await fetcher.fetchUpdates();
+    // Use the new aggregator through newsService
+    const result = await newsService.aggregateNews({
+      categories,
+      providers,
+      force,
+    });
     
-    const summary = {
-      sourcesUpdated: results.length,
-      totalArticles: results.reduce((sum, r) => sum + r.articlesCount, 0),
-      errors: results.filter(r => r.errors && r.errors.length > 0).length,
-      timestamp: new Date().toISOString(),
-    };
-
+    // Get statistics
+    const stats = await newsService.getAggregationStatistics();
+    
     return NextResponse.json({ 
       message: 'News refresh completed',
-      summary,
-      results,
+      result,
+      statistics: stats,
+      timestamp: new Date().toISOString(),
     });
   } catch (error: any) {
     console.error('Error refreshing news:', error);

@@ -2,15 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { SpeechClient } from '@google-cloud/speech';
 import path from 'path';
 import fs from 'fs';
+import { config } from '@/lib/env';
 
 // Debug: Log environment variables
 console.log('[STT API] Environment check:');
-console.log('[STT API] GOOGLE_APPLICATION_CREDENTIALS:', process.env.GOOGLE_APPLICATION_CREDENTIALS);
+console.log('[STT API] GOOGLE_APPLICATION_CREDENTIALS:', config.api.googleCredentials);
 console.log('[STT API] Current working directory:', process.cwd());
 
 // Resolve credential path
-const credentialPath = process.env.GOOGLE_APPLICATION_CREDENTIALS 
-  ? path.resolve(process.cwd(), process.env.GOOGLE_APPLICATION_CREDENTIALS)
+const credentialPath = config.api.googleCredentials 
+  ? path.resolve(process.cwd(), config.api.googleCredentials)
   : path.resolve(process.cwd(), './credentials/google-cloud-key.json');
 
 console.log('[STT API] Resolved credential path:', credentialPath);

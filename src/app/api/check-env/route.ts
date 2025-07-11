@@ -1,16 +1,17 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs';
+import { config, isProduction } from '@/lib/env';
 
 export async function GET() {
   // 보안을 위해 개발 환경에서만 작동
-  if (process.env.NODE_ENV === 'production') {
+  if (isProduction) {
     return NextResponse.json(
       { error: 'Not available in production' },
       { status: 403 }
     );
   }
 
-  const googleCredPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  const googleCredPath = config.api.googleCredentials;
   let googleCredExists = false;
   
   if (googleCredPath) {
@@ -22,19 +23,19 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    environment: process.env.NODE_ENV,
+    environment: config.env.nodeEnv,
     credentials: {
       googleCloud: {
         path: googleCredPath ? '✅ Set' : '❌ Not set',
         fileExists: googleCredExists ? '✅ File exists' : '❌ File not found',
       },
       geminiApi: {
-        key: process.env.GEMINI_API_KEY ? '✅ Set' : '❌ Not set',
-        length: process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.length : 0,
+        key: config.api.geminiApiKey ? '✅ Set' : '❌ Not set',
+        length: config.api.geminiApiKey ? config.api.geminiApiKey.length : 0,
       },
       supabase: {
-        url: process.env.NEXT_PUBLIC_SUPABASE_URL ? '✅ Set' : '❌ Not set',
-        anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '✅ Set' : '❌ Not set',
+        url: config.supabase.url ? '✅ Set' : '❌ Not set',
+        anonKey: config.supabase.anonKey ? '✅ Set' : '❌ Not set',
       }
     }
   });

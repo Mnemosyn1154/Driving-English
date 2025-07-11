@@ -36,12 +36,12 @@ export const MyRSSFeeds: React.FC = () => {
       const params = new URLSearchParams();
       if (deviceId) params.append('deviceId', deviceId);
       
-      const response = await fetch(`/api/rss?${params}`);
+      const response = await fetch(`/api/rss/sources?type=USER_RSS&${params}`);
       if (response.ok) {
         const data = await response.json();
         
         // 카테고리별로 그룹화
-        const grouped = data.feeds.reduce((acc: any, feed: RSSFeed) => {
+        const grouped = (data.sources || data.feeds || []).reduce((acc: any, feed: RSSFeed) => {
           const category = feed.category || 'general';
           if (!acc[category]) {
             acc[category] = {
@@ -67,7 +67,8 @@ export const MyRSSFeeds: React.FC = () => {
     setUpdating(true);
     try {
       const deviceId = localStorage.getItem('deviceId');
-      const response = await fetch('/api/rss/fetch', {
+      // TODO: Update to use new batch endpoint
+      const response = await fetch('/api/rss/sources/batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deviceId })

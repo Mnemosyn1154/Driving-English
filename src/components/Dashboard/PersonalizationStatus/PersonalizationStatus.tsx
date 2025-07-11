@@ -36,7 +36,7 @@ export const PersonalizationStatus: React.FC = () => {
       const params = new URLSearchParams();
       if (deviceId) params.append('deviceId', deviceId);
       
-      const response = await fetch(`/api/rss?${params}`);
+      const response = await fetch(`/api/rss/sources?type=USER_RSS&${params}`);
       if (response.ok) {
         const data = await response.json();
         hasRssFeeds = data.feeds && data.feeds.length > 0;

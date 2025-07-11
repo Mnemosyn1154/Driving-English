@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { config } from '@/lib/env';
 
 // Initialize Gemini
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const genAI = new GoogleGenerativeAI(config.api.geminiApiKey || '');
 
 // Helper to extract MIME type from base64 data URL
 function getMimeType(base64String: string): string {
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if Gemini API key is configured
-    if (!process.env.GEMINI_API_KEY) {
+    if (!config.api.geminiApiKey) {
       return NextResponse.json(
         { error: 'Gemini API key not configured' },
         { status: 500 }

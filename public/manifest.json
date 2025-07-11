@@ -1,18 +1,20 @@
 {
-  "name": "Driving English",
+  "name": "Driving English - 운전하며 배우는 AI 영어 뉴스",
   "short_name": "DrivingEng",
-  "description": "운전하며 배우는 AI 영어 뉴스 서비스",
+  "description": "운전 중에도 안전하게 사용할 수 있는 AI 기반 영어 학습 서비스",
   "theme_color": "#1e3c72",
   "background_color": "#ffffff",
   "display": "standalone",
   "orientation": "portrait",
   "scope": "/",
   "start_url": "/",
+  "id": "/?source=pwa",
   "icons": [
     {
       "src": "/icon.svg",
       "sizes": "any",
-      "type": "image/svg+xml"
+      "type": "image/svg+xml",
+      "purpose": "any"
     },
     {
       "src": "/icons/icon-72x72.png",
@@ -57,5 +59,43 @@
     }
   ],
   "categories": ["education", "news"],
-  "lang": "ko-KR"
+  "lang": "ko-KR",
+  "shortcuts": [
+    {
+      "name": "학습 시작",
+      "short_name": "학습",
+      "description": "영어 뉴스 학습 시작하기",
+      "url": "/learn",
+      "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "운전 모드",
+      "short_name": "운전",
+      "description": "운전 모드로 시작하기",
+      "url": "/driving",
+      "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/home.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "label": "홈 화면"
+    },
+    {
+      "src": "/screenshots/learn.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "label": "학습 화면"
+    },
+    {
+      "src": "/screenshots/driving.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "label": "운전 모드"
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
 }

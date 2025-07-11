@@ -3,6 +3,8 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { authHelpers } from '@/lib/supabase-client';
+import { config } from '@/lib/env';
+import { AuthService } from '@/lib/authService';
 
 interface AuthContextType {
   user: User | null;
@@ -35,24 +37,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isSkipAuth, setIsSkipAuth] = useState(false);
   const [deviceId, setDeviceId] = useState<string | null>(null);
 
-  // Check for development mode skip auth
-  const isDevelopment = process.env.NODE_ENV === 'development';
-  const autoSkipAuth = process.env.NEXT_PUBLIC_SKIP_AUTH === 'true';
-
   useEffect(() => {
     setMounted(true);
     
-    // Initialize device ID
-    let id = localStorage.getItem('deviceId');
-    if (!id) {
-      id = `device-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      localStorage.setItem('deviceId', id);
-    }
-    setDeviceId(id);
-
-    // Check skipAuth status
-    const skipAuthStored = localStorage.getItem('skipAuth') === 'true';
-    setIsSkipAuth(skipAuthStored || (isDevelopment && autoSkipAuth));
+    // Initialize auth context from AuthService
+    AuthService.getClientAuthContext().then((authContext) => {
+      setDeviceId(authContext.deviceId);
+      setIsSkipAuth(authContext.isSkipAuth);
+      setUser(authContext.user);
+      setLoading(false);
+    }).catch((error) => {
+      console.error('Failed to initialize auth context:', error);
+      setLoading(false);
+    });
   }, []);
 
   useEffect(() => {
@@ -89,8 +86,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     const { error } = await authHelpers.signInWithEmail(email, password);
     if (!error) {
+      AuthService.setSkipAuth(false);
       setIsSkipAuth(false);
-      localStorage.removeItem('skipAuth');
     }
     return { error };
   };
@@ -101,14 +98,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const skipAuth = () => {
+    AuthService.setSkipAuth(true);
     setIsSkipAuth(true);
-    localStorage.setItem('skipAuth', 'true');
     setLoading(false);
   };
 
   const clearSkipAuth = () => {
+    AuthService.setSkipAuth(false);
     setIsSkipAuth(false);
-    localStorage.removeItem('skipAuth');
   };
 
   const isAuthenticated = !!user || isSkipAuth;

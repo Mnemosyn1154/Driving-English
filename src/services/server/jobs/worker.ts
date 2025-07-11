@@ -2,7 +2,7 @@ import { newsQueue, processingQueue, maintenanceQueue, audioQueue } from './queu
 import { processNewsFetchJob, processPendingArticles } from './processors/newsProcessor';
 import { processArticleJob } from './processors/articleProcessor';
 import { processAudioGenerationJob } from './processors/audioProcessor';
-import { processCacheCleanupJob } from './processors/cacheProcessor';
+import { processCacheCleanupJob } from './processors/cacheProcessorV2';
 
 // News queue processor
 newsQueue.process('fetch-all-sources', async (job) => {

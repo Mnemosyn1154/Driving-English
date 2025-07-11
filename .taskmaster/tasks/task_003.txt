@@ -1,6 +1,6 @@
 # Task ID: 3
 # Title: TTS 시스템 구현 - Google Text-to-Speech API를 활용한 다국어 음성 합성 파이프라인 구축
-# Status: pending
+# Status: done
 # Dependencies: 2
 # Priority: high
 # Description: Google Text-to-Speech API를 활용하여 번역된 한국어 텍스트를 음성으로 변환하고, 다국어 음성 합성 파이프라인을 구축합니다.

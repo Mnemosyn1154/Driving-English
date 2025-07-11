@@ -3,6 +3,7 @@ import { NewsService } from '@/services/server/news/newsService';
 import { isMockMode } from '@/lib/env';
 import { mockArticles } from '@/services/server/mock/mockData';
 import { initializeServices } from '@/services/server/startup';
+import { getAuthContext } from '@/lib/api-auth';
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,6 +11,7 @@ export async function GET(request: NextRequest) {
     await initializeServices();
     
     const searchParams = request.nextUrl.searchParams;
+    const type = searchParams.get('type'); // New parameter for article type
     
     // Use mock data if in mock mode
     if (isMockMode) {
@@ -40,7 +42,7 @@ export async function GET(request: NextRequest) {
     
     const newsService = new NewsService();
 
-    // Parse filters
+    // Parse common filters
     const filters = {
       category: searchParams.get('category') || undefined,
       difficulty: searchParams.get('difficulty') 
@@ -52,7 +54,6 @@ export async function GET(request: NextRequest) {
       maxDifficulty: searchParams.get('maxDifficulty')
         ? parseInt(searchParams.get('maxDifficulty')!)
         : undefined,
-      // isProcessed: searchParams.get('isProcessed') !== 'false', // 성능 개선을 위해 임시 제거
       search: searchParams.get('search') || undefined,
       tags: searchParams.get('tags')?.split(',').filter(Boolean) || undefined,
       dateFrom: searchParams.get('dateFrom')
@@ -75,9 +76,59 @@ export async function GET(request: NextRequest) {
     if (pagination.page < 1) pagination.page = 1;
     if (pagination.limit < 1 || pagination.limit > 100) pagination.limit = 20;
 
-    const result = await newsService.getArticles(filters, pagination);
-
-    return NextResponse.json(result);
+    // Handle different article types
+    switch (type) {
+      case 'latest':
+        return NextResponse.json(
+          await newsService.getLatestArticles(filters, pagination)
+        );
+      
+      case 'personalized': {
+        // Get auth context
+        const auth = await getAuthContext(request);
+        
+        if (!auth.isAuthenticated) {
+          return NextResponse.json(
+            { error: 'Authentication required for personalized news' },
+            { status: 401 }
+          );
+        }
+        
+        return NextResponse.json(
+          await newsService.getPersonalizedArticles(
+            auth.userId!,
+            auth.deviceId,
+            pagination
+          )
+        );
+      }
+      
+      case 'recommendations': {
+        // Get auth context
+        const auth = await getAuthContext(request);
+        const limit = parseInt(searchParams.get('limit') || '5');
+        
+        if (!auth.isAuthenticated) {
+          // Return default recommendations for non-authenticated users
+          return NextResponse.json(
+            await newsService.getArticles(
+              { difficulty: 3, isProcessed: true },
+              { limit, orderBy: 'publishedAt' }
+            )
+          );
+        }
+        
+        return NextResponse.json(
+          await newsService.getRecommendations(auth.userId!, limit)
+        );
+      }
+      
+      default:
+        // Default behavior - return all articles with filters
+        return NextResponse.json(
+          await newsService.getArticles(filters, pagination)
+        );
+    }
   } catch (error) {
     console.error('Error fetching articles:', error);
     return NextResponse.json(

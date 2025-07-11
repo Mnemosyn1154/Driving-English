@@ -2,6 +2,10 @@
  * Service Worker Registration and Management
  */
 
+import { config, isProduction } from '@/lib/env';
+
+const { features } = config;
+
 export interface ServiceWorkerConfig {
   onUpdate?: (registration: ServiceWorkerRegistration) => void;
   onSuccess?: (registration: ServiceWorkerRegistration) => void;
@@ -210,7 +214,7 @@ class ServiceWorkerManager {
   getNetworkStatus() {
     return {
       isOnline: this.isOnline,
-      connection: (navigator as any).connection || null
+      connection: typeof navigator !== 'undefined' ? (navigator as any).connection || null : null
     };
   }
 
@@ -259,13 +263,13 @@ class ServiceWorkerManager {
   }
 }
 
-// Export singleton instance
-export const serviceWorkerManager = new ServiceWorkerManager();
+// Export singleton instance - only create in browser
+export const serviceWorkerManager = typeof window !== 'undefined' ? new ServiceWorkerManager() : null as any;
 
 // Convenient registration function
 export async function registerServiceWorker(config?: ServiceWorkerConfig) {
   // Only register in production
-  if (process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_ENABLE_SW === 'true') {
+  if (isProduction || features.enableServiceWorker) {
     await serviceWorkerManager.register(config);
   } else {
     console.log('Service Worker disabled in development');

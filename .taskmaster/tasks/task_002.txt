@@ -1,6 +1,6 @@
 # Task ID: 2
 # Title: 번역 시스템 구현 - Google Translation API와 캐싱 시스템을 활용한 영한 번역 파이프라인 구축
-# Status: pending
+# Status: done
 # Dependencies: 1
 # Priority: high
 # Description: Google Translation API를 활용하여 영어 뉴스를 한국어로 번역하고, 캐싱 시스템을 통해 성능을 최적화하는 번역 파이프라인을 구축합니다.
