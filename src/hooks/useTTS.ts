@@ -5,6 +5,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { usePerformanceTracking } from '@/components/layout/PerformanceProvider';
+import { useBrowserTTS } from './useBrowserTTS';
 
 export interface TTSOptions {
   language: string;
@@ -49,11 +50,17 @@ export function useTTS(defaultOptions: TTSOptions): UseTTSReturn {
 
   // Performance tracking
   const { trackVoicePerformance } = usePerformanceTracking();
+  
+  // Browser TTS fallback
+  const browserTTS = useBrowserTTS();
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const cacheRef = useRef<AudioCache>({});
   const optionsRef = useRef<TTSOptions>(defaultOptions);
   const ttsStartTimeRef = useRef<number>(0);
+  const synthesisIdRef = useRef<number>(0); // 중복 호출 추적용
+  const abortControllerRef = useRef<AbortController | null>(null); // fetch 요청 취소용
+  const audioEventListenersRef = useRef<{ [key: string]: EventListener }>({});
 
   // Update options
   useEffect(() => {
@@ -85,12 +92,47 @@ export function useTTS(defaultOptions: TTSOptions): UseTTSReturn {
    * Synthesize single text
    */
   const synthesize = useCallback(async (text: string, options?: Partial<TTSOptions>) => {
+    // 중복 호출 방지를 위한 ID 생성
+    const currentSynthesisId = ++synthesisIdRef.current;
+    console.log(`[useTTS] 📢 Synthesize #${currentSynthesisId}:`, text.substring(0, 50) + '...');
+    
+    // 이전 fetch 요청 취소
+    if (abortControllerRef.current) {
+      console.log(`[useTTS] 🛑 Aborting previous request #${currentSynthesisId}`);
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    
+    // 이전 오디오 정리
+    if (audioRef.current) {
+      console.log(`[useTTS] 🔇 Cleaning previous audio #${currentSynthesisId}`);
+      
+      // 모든 이벤트 리스너 제거
+      Object.entries(audioEventListenersRef.current).forEach(([event, listener]) => {
+        audioRef.current?.removeEventListener(event, listener);
+      });
+      audioEventListenersRef.current = {};
+      
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current.src = '';
+      audioRef.current = null;
+      setIsPlaying(false);
+    }
+    
+    // 브라우저 TTS도 정리
+    if (browserTTS.isSpeaking) {
+      console.log(`[useTTS] 브라우저 TTS 정리 #${currentSynthesisId}`);
+      browserTTS.cancel();
+    }
+    
     try {
       setError(null);
       setCurrentText(text);
       
       const finalOptions = { ...optionsRef.current, ...options };
       const cacheKey = getCacheKey(text, finalOptions);
+      console.log(`[useTTS] 옵션 #${currentSynthesisId}:`, finalOptions);
 
       // Check cache
       if (finalOptions.cacheEnabled !== false && cacheRef.current[cacheKey]) {
@@ -108,6 +150,10 @@ export function useTTS(defaultOptions: TTSOptions): UseTTSReturn {
       // Track TTS start time
       ttsStartTimeRef.current = performance.now();
 
+      // 새 AbortController 생성
+      abortControllerRef.current = new AbortController();
+
+      console.log('[useTTS] TTS API 호출 시작');
       // Call TTS API
       const response = await fetch('/api/tts/synthesize', {
         method: 'POST',
@@ -122,27 +168,50 @@ export function useTTS(defaultOptions: TTSOptions): UseTTSReturn {
           pitch: finalOptions.pitch,
           volumeGain: finalOptions.volume,
         }),
+        signal: abortControllerRef.current.signal,
       });
+      
+      console.log('[useTTS] TTS API 응답:', response.status);
 
       if (!response.ok) {
-        throw new Error('TTS synthesis failed');
+        const errorText = await response.text();
+        console.error('[useTTS] TTS API 에러:', errorText);
+        throw new Error(`TTS synthesis failed: ${response.status}`);
       }
 
-      const result = await response.json();
+      let result;
+      try {
+        result = await response.json();
+      } catch (jsonError) {
+        console.error('[useTTS] JSON 파싱 에러:', jsonError);
+        throw new Error('TTS 응답 파싱 실패');
+      }
+      
+      console.log('[useTTS] TTS API 결과:', result);
       
       if (!result.success) {
+        console.error('[useTTS] TTS 실패:', result.error);
         throw new Error(result.error || 'TTS synthesis failed');
       }
 
       // Create audio element
       const audio = new Audio();
       
+      console.log('[useTTS] 오디오 데이터 확인:', {
+        hasBase64: !!result.data.audioBase64,
+        base64Length: result.data.audioBase64?.length || 0,
+        hasUrl: !!result.data.audioUrl,
+        url: result.data.audioUrl
+      });
+      
       if (result.data.audioBase64) {
         // Use base64 audio if available
         audio.src = `data:audio/mp3;base64,${result.data.audioBase64}`;
+        console.log('[useTTS] Base64 오디오 사용');
       } else if (result.data.audioUrl) {
         // Use audio URL
         audio.src = result.data.audioUrl;
+        console.log('[useTTS] 오디오 URL 사용:', result.data.audioUrl);
       } else {
         throw new Error('No audio data received');
       }
@@ -151,17 +220,44 @@ export function useTTS(defaultOptions: TTSOptions): UseTTSReturn {
       audio.volume = finalOptions.volume || 1;
       audio.playbackRate = finalOptions.speed || 1;
 
-      // Add event listeners
-      audio.addEventListener('play', () => setIsPlaying(true));
-      audio.addEventListener('pause', () => setIsPlaying(false));
-      audio.addEventListener('ended', () => {
+      // Add event listeners with cleanup tracking
+      const playListener = () => {
+        console.log('[useTTS] 오디오 재생 시작');
+        setIsPlaying(true);
+      };
+      const pauseListener = () => {
+        console.log('[useTTS] 오디오 일시정지');
+        setIsPlaying(false);
+      };
+      const endedListener = () => {
+        console.log('[useTTS] 오디오 재생 완료');
         setIsPlaying(false);
         setCurrentText(null);
-      });
-      audio.addEventListener('error', (e) => {
-        console.error('Audio playback error:', e);
+      };
+      const errorListener = (e: Event) => {
+        console.error('[useTTS] Audio playback error:', e);
+        const audioError = e.target as HTMLAudioElement;
+        console.error('[useTTS] Audio error details:', {
+          error: audioError.error,
+          src: audioError.src,
+          readyState: audioError.readyState,
+          networkState: audioError.networkState
+        });
         setError(new Error('Audio playback failed'));
-      });
+      };
+      
+      // 이벤트 리스너 등록 및 추적
+      audio.addEventListener('play', playListener);
+      audio.addEventListener('pause', pauseListener);
+      audio.addEventListener('ended', endedListener);
+      audio.addEventListener('error', errorListener);
+      
+      audioEventListenersRef.current = {
+        play: playListener,
+        pause: pauseListener,
+        ended: endedListener,
+        error: errorListener
+      };
 
       // Cache the audio
       if (finalOptions.cacheEnabled !== false) {
@@ -182,21 +278,53 @@ export function useTTS(defaultOptions: TTSOptions): UseTTSReturn {
       
       // Auto-play if requested
       if (finalOptions.autoPlay !== false) {
-        await audio.play();
+        console.log('[useTTS] 자동 재생 시도');
+        try {
+          await audio.play();
+          console.log('[useTTS] 자동 재생 성공');
+        } catch (playError) {
+          console.error('[useTTS] 자동 재생 실패:', playError);
+          // 브라우저 정책으로 자동 재생이 차단될 수 있음
+          // 사용자 상호작용 후 재생 필요
+        }
       }
-    } catch (err) {
-      console.error('TTS synthesis error:', err);
+    } catch (err: any) {
+      // Abort 에러는 무시 (abort() 호출로 인한 정상적인 취소)
+      if (err.name === 'AbortError') {
+        console.log(`[useTTS] Request aborted #${currentSynthesisId}`);
+        return;
+      }
+      
+      console.error('[useTTS] TTS synthesis error:', err);
       
       // Track TTS error
       if (ttsStartTimeRef.current > 0) {
         const endTime = performance.now();
         trackVoicePerformance('tts', ttsStartTimeRef.current, endTime, false);
       }
-      setError(err as Error);
+      
+      // Try browser TTS as fallback
+      if (browserTTS.isSupported) {
+        console.log(`[useTTS] 🔄 Fallback to browser TTS #${currentSynthesisId}`);
+        browserTTS.speak(text, {
+          lang: finalOptions.language,
+          rate: finalOptions.speed,
+          pitch: finalOptions.pitch,
+          volume: finalOptions.volume,
+        });
+        setIsPlaying(true);
+        // Don't set error if browser TTS works
+      } else {
+        setError(err as Error);
+      }
     } finally {
       setIsSynthesizing(false);
+      // AbortController 참조 정리
+      if (abortControllerRef.current?.signal.aborted) {
+        abortControllerRef.current = null;
+      }
     }
-  }, []);
+  }, [browserTTS, trackVoicePerformance]);
 
   /**
    * Synthesize batch of texts
@@ -270,8 +398,10 @@ export function useTTS(defaultOptions: TTSOptions): UseTTSReturn {
         console.error('Play error:', err);
         setError(new Error('Failed to play audio'));
       });
+    } else if (browserTTS.isSupported && browserTTS.isSpeaking) {
+      browserTTS.resume();
     }
-  }, [isPlaying]);
+  }, [isPlaying, browserTTS]);
 
   /**
    * Pause audio
@@ -280,19 +410,39 @@ export function useTTS(defaultOptions: TTSOptions): UseTTSReturn {
     if (audioRef.current && isPlaying) {
       audioRef.current.pause();
     }
-  }, [isPlaying]);
+    if (browserTTS.isSupported && browserTTS.isSpeaking) {
+      browserTTS.pause();
+    }
+  }, [isPlaying, browserTTS]);
 
   /**
    * Stop audio
    */
   const stop = useCallback(() => {
+    // 진행 중인 fetch 요청 취소
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    
     if (audioRef.current) {
+      // 이벤트 리스너 제거
+      Object.entries(audioEventListenersRef.current).forEach(([event, listener]) => {
+        audioRef.current?.removeEventListener(event, listener);
+      });
+      audioEventListenersRef.current = {};
+      
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
+      audioRef.current.src = '';
+      audioRef.current = null;
       setIsPlaying(false);
       setCurrentText(null);
     }
-  }, []);
+    if (browserTTS.isSupported && browserTTS.isSpeaking) {
+      browserTTS.cancel();
+    }
+  }, [browserTTS]);
 
   /**
    * Set volume
@@ -324,9 +474,18 @@ export function useTTS(defaultOptions: TTSOptions): UseTTSReturn {
     await synthesize(text, finalOptions);
   }, [synthesize]);
 
+  // Update playing state based on browser TTS
+  useEffect(() => {
+    if (browserTTS.isSpeaking && !audioRef.current?.src) {
+      setIsPlaying(true);
+    } else if (!browserTTS.isSpeaking && !audioRef.current?.src) {
+      setIsPlaying(false);
+    }
+  }, [browserTTS.isSpeaking]);
+
   return {
     isSynthesizing,
-    isPlaying,
+    isPlaying: isPlaying || browserTTS.isSpeaking,
     error,
     currentText,
     synthesize,

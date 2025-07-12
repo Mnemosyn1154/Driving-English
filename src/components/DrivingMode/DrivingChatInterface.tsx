@@ -51,7 +51,7 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
     {
       id: '1',
       type: 'system',
-      content: '안녕하세요! 운전 중 영어 학습을 도와드리겠습니다. 음성이나 텍스트로 명령해주세요. "AI 뉴스 검색"과 같이 말해보세요.',
+      content: '안녕하세요! 운전 중 영어 학습을 도와드리겠습니다. 기사를 불러오고 있습니다...',
       timestamp: new Date()
     }
   ]);
@@ -72,7 +72,7 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
     clearError,
   } = useHybridSpeechRecognition({
     onCommand: (command, transcript) => {
-      console.log('Command detected:', command, transcript);
+      console.log('[DrivingChat] Command detected:', command, transcript);
       // Handle direct commands
       handleVoiceCommand(command);
       
@@ -86,7 +86,7 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
       setMessages(prev => [...prev, userMessage]);
     },
     onGeminiResponse: (result) => {
-      console.log('Gemini response:', result);
+      console.log('[DrivingChat] Gemini response:', result);
       // Add user message
       const userMessage: ChatMessage = {
         id: generateMessageId(),
@@ -100,13 +100,21 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
       const aiMessage: ChatMessage = {
         id: generateMessageId(),
         type: 'assistant',
-        content: result.response,
+        content: result.response || 'AI 응답을 처리하는 중 오류가 발생했습니다.',
         timestamp: new Date()
       };
       setMessages(prev => [...prev, aiMessage]);
     },
     onError: (error) => {
-      console.error('Voice error:', error);
+      console.error('[DrivingChat] Voice error:', error);
+      // 사용자에게 에러 표시
+      const errorMessage: ChatMessage = {
+        id: generateMessageId(),
+        type: 'system',
+        content: `음성 인식 오류: ${error.message}. 다시 시도해주세요.`,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
     },
   });
 
@@ -116,8 +124,18 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
   }, [messages]);
 
   // Show current sentence when it changes
+  const prevSentenceRef = useRef<{ text: string; translation: string } | undefined>();
   useEffect(() => {
-    if (currentSentence) {
+    console.log('[DrivingChat] currentSentence 변경 감지:', {
+      currentSentence,
+      prevSentence: prevSentenceRef.current,
+      hasChanged: currentSentence && (!prevSentenceRef.current || prevSentenceRef.current.text !== currentSentence.text)
+    });
+    
+    if (currentSentence && 
+        (!prevSentenceRef.current || 
+         prevSentenceRef.current.text !== currentSentence.text)) {
+      console.log('[DrivingChat] 새 문장 메시지 추가:', currentSentence);
       const sentenceMessage: ChatMessage = {
         id: generateMessageId(),
         type: 'assistant',
@@ -127,6 +145,7 @@ export const DrivingChatInterface: React.FC<DrivingChatInterfaceProps> = ({
         timestamp: new Date()
       };
       setMessages(prev => [...prev, sentenceMessage]);
+      prevSentenceRef.current = currentSentence;
     }
   }, [currentSentence]);
 

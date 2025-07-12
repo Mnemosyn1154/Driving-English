@@ -130,6 +130,8 @@ export function useHybridSpeechRecognition(
   // Process audio with STT first, then Gemini if needed
   const processAudio = useCallback(async (audioBlob: Blob) => {
     try {
+      console.log('[HybridSpeech] Starting audio processing, blob size:', audioBlob.size);
+      
       // Convert to base64
       const reader = new FileReader();
       reader.readAsDataURL(audioBlob);
@@ -138,25 +140,33 @@ export function useHybridSpeechRecognition(
         reader.onloadend = () => resolve(reader.result as string);
         reader.onerror = reject;
       });
+      
+      console.log('[HybridSpeech] Audio converted to base64, length:', base64Audio.length);
 
       // 1. Try STT first
       updateStatus('processing_stt');
+      console.log('[HybridSpeech] Calling STT API...');
+      
       const sttResponse = await fetch('/api/stt-command', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ audio: base64Audio }),
       });
 
+      console.log('[HybridSpeech] STT Response status:', sttResponse.status);
+      
       if (!sttResponse.ok) {
         const errorData = await sttResponse.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('STT API Error:', errorData);
+        console.error('[HybridSpeech] STT API Error:', errorData);
         throw new Error(`STT failed: ${errorData.error || sttResponse.statusText}`);
       }
 
       const sttResult = await sttResponse.json() as CommandResult | FallbackResult;
-
+      console.log('[HybridSpeech] STT Result:', sttResult);
+      
       if (sttResult.type === 'command') {
         // Success - execute command
+        console.log('[HybridSpeech] Command detected:', sttResult.payload);
         setLastTranscript(sttResult.transcript);
         setLastIntent(sttResult.payload);
         updateStatus('success');
@@ -165,7 +175,7 @@ export function useHybridSpeechRecognition(
       }
 
       // 2. Fallback to Gemini
-      console.log('STT fallback, using Gemini:', sttResult.reason);
+      console.log('[HybridSpeech] STT fallback, using Gemini:', sttResult.reason);
       updateStatus('processing_gemini');
 
       const geminiResponse = await fetch('/api/gemini-audio', {
@@ -179,11 +189,16 @@ export function useHybridSpeechRecognition(
         }),
       });
 
+      console.log('[HybridSpeech] Gemini Response status:', geminiResponse.status);
+      
       if (!geminiResponse.ok) {
-        throw new Error(`Gemini processing failed: ${geminiResponse.statusText}`);
+        const errorData = await geminiResponse.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('[HybridSpeech] Gemini API Error:', errorData);
+        throw new Error(`Gemini processing failed: ${errorData.error || geminiResponse.statusText}`);
       }
 
       const geminiResult = await geminiResponse.json() as GeminiResult;
+      console.log('[HybridSpeech] Gemini Result:', geminiResult);
       
       setLastTranscript(geminiResult.transcription);
       setLastIntent(geminiResult.intent);
@@ -191,6 +206,7 @@ export function useHybridSpeechRecognition(
       onGeminiResponse?.(geminiResult);
 
     } catch (error) {
+      console.error('[HybridSpeech] Processing error:', error);
       handleError(error as Error);
     }
   }, [lastTranscript, updateStatus, onCommand, onGeminiResponse, handleError]);
@@ -198,7 +214,7 @@ export function useHybridSpeechRecognition(
   // Start recording
   const startRecording = useCallback(async () => {
     if (isRecording) {
-      console.warn('Already recording');
+      console.warn('[HybridSpeech] Already recording');
       return;
     }
 
@@ -207,6 +223,13 @@ export function useHybridSpeechRecognition(
       setLastError(null);
       audioChunksRef.current = [];
 
+      console.log('[HybridSpeech] Requesting microphone access...');
+      
+      // Check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('음성 녹음이 지원되지 않는 브라우저입니다.');
+      }
+      
       // Get microphone access
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -216,6 +239,16 @@ export function useHybridSpeechRecognition(
           noiseSuppression: true,
           autoGainControl: true,
         },
+      }).catch((error) => {
+        console.error('[HybridSpeech] Microphone access error:', error);
+        if (error.name === 'NotAllowedError') {
+          throw new Error('마이크 접근 권한이 거부되었습니다. 브라우저 설정에서 마이크 권한을 허용해주세요.');
+        } else if (error.name === 'NotFoundError') {
+          throw new Error('마이크를 찾을 수 없습니다. 마이크가 연결되어 있는지 확인해주세요.');
+        } else if (error.name === 'NotReadableError') {
+          throw new Error('마이크를 사용할 수 없습니다. 다른 앱에서 사용 중일 수 있습니다.');
+        }
+        throw error;
       });
 
       streamRef.current = stream;

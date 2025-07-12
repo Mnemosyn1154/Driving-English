@@ -194,6 +194,9 @@ export class TextToSpeechService implements ITTSService {
   private generateSimpleSSML(text: string, options?: SSMLOptions): string {
     let ssml = '<speak>';
     
+    // 문장 시작 전 짧은 휴지 추가 (자연스러움)
+    ssml += '<break time="200ms"/>';
+    
     if (options?.pauseBefore) {
       ssml += `<break time="${options.pauseBefore}ms"/>`;
     }
@@ -210,7 +213,14 @@ export class TextToSpeechService implements ITTSService {
       ssml += `<emphasis level="${options.emphasis}">`;
     }
     
-    ssml += this.escapeSSML(text);
+    // 문장 내용 처리 - 쉬표와 마침표에 break 추가
+    let processedText = this.escapeSSML(text);
+    processedText = processedText.replace(/,/g, ',<break time="150ms"/>');
+    processedText = processedText.replace(/\./g, '.<break time="250ms"/>');
+    processedText = processedText.replace(/\?/g, '?<break time="300ms"/>');
+    processedText = processedText.replace(/!/g, '!<break time="300ms"/>');
+    
+    ssml += processedText;
     
     if (options?.emphasis) {
       ssml += '</emphasis>';
@@ -223,6 +233,9 @@ export class TextToSpeechService implements ITTSService {
     if (options?.pauseAfter) {
       ssml += `<break time="${options.pauseAfter}ms"/>`;
     }
+    
+    // 문장 끝 휴지 추가
+    ssml += '<break time="300ms"/>';
     
     ssml += '</speak>';
     
@@ -248,13 +261,13 @@ export class TextToSpeechService implements ITTSService {
     if (language === 'ko') {
       return {
         languageCode: 'ko-KR',
-        name: voiceName || 'ko-KR-Neural2-A', // Female voice
+        name: voiceName || 'ko-KR-WaveNet-A', // WaveNet Female voice (고품질)
         ssmlGender: 'FEMALE' as SsmlVoiceGender,
       };
     } else {
       return {
         languageCode: 'en-US',
-        name: voiceName || 'en-US-Neural2-F', // Female voice
+        name: voiceName || 'en-US-WaveNet-F', // WaveNet Female voice (고품질)
         ssmlGender: 'FEMALE' as SsmlVoiceGender,
       };
     }
@@ -351,7 +364,8 @@ export class TextToSpeechService implements ITTSService {
         id: `${sentence.id}_en`,
         text: sentence.english,
         language: 'en',
-        speed: 0.9, // Slightly slower for learners
+        speed: 0.85, // 학습자를 위해 더 천천히
+        pitch: -1.0, // 약간 낮은 톤으로 더 편안하게
         ssml: true,
       });
 
@@ -360,6 +374,7 @@ export class TextToSpeechService implements ITTSService {
         id: `${sentence.id}_ko`,
         text: sentence.korean,
         language: 'ko',
+        speed: 0.9, // 한국어는 약간만 느리게
         ssml: true,
       });
 

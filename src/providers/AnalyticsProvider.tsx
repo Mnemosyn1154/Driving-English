@@ -15,7 +15,7 @@ interface AnalyticsContextType {
 const AnalyticsContext = createContext<AnalyticsContextType | null>(null);
 
 const defaultConfig: AnalyticsConfig = {
-  enabled: true,
+  enabled: process.env.NODE_ENV !== 'development', // Disable in development
   debug: process.env.NODE_ENV === 'development',
   sampleRate: 1, // Track all events
   sessionTimeout: 30, // 30 minutes

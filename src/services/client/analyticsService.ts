@@ -379,13 +379,21 @@ class AnalyticsService {
       });
 
       if (!response.ok) {
+        // In development, don't retry to avoid console spam
+        if (process.env.NODE_ENV !== 'development') {
+          // Put events back in queue for retry
+          this.eventQueue.unshift(...events);
+        }
+      }
+    } catch (error) {
+      // In development, log quietly
+      if (process.env.NODE_ENV === 'development') {
+        // Silent fail in development
+      } else {
+        console.error('[Analytics] Failed to flush events:', error);
         // Put events back in queue for retry
         this.eventQueue.unshift(...events);
       }
-    } catch (error) {
-      console.error('[Analytics] Failed to flush events:', error);
-      // Put events back in queue for retry
-      this.eventQueue.unshift(...events);
     }
   }
 
