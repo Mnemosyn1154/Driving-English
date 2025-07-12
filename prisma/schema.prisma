@@ -22,41 +22,48 @@ model NewsSource {
 }
 
 model Article {
-  id                  String                  @id @default(uuid())
-  sourceId            String
-  title               String
-  titleKo             String?
-  summary             String
-  summaryKo           String?
-  content             String
-  url                 String                  @unique
-  imageUrl            String?
-  publishedAt         DateTime
-  wordCount           Int
-  readingTime         Int
-  category            String
-  difficulty          Int?
-  tags                String[]
-  sentences           Json?
-  isProcessed         Boolean                 @default(false)
-  processedAt         DateTime?
-  processingError     String?
-  audioProcessed      Boolean                 @default(false)
-  audioProcessedAt    DateTime?
-  audioUrlEn          String?
-  audioUrlKo          String?
-  audioDuration       Int?
-  createdAt           DateTime                @default(now())
-  updatedAt           DateTime                @updatedAt
-  source              NewsSource              @relation(fields: [sourceId], references: [id])
-  sentenceModels      Sentence[]
-  userProgress        UserProgress[]
-  userArticleProgress UserArticleProgress[]
+  id                      String                  @id @default(uuid())
+  sourceId                String
+  title                   String
+  titleKo                 String?
+  summary                 String
+  summaryKo               String?
+  content                 String
+  fullContent             String?
+  url                     String                  @unique
+  imageUrl                String?
+  publishedAt             DateTime
+  wordCount               Int
+  readingTime             Int
+  category                String
+  difficulty              Int?
+  tags                    String[]
+  sentences               Json?
+  isProcessed             Boolean                 @default(false)
+  processedAt             DateTime?
+  processingError         String?
+  audioProcessed          Boolean                 @default(false)
+  audioProcessedAt        DateTime?
+  audioUrlEn              String?
+  audioUrlKo              String?
+  audioDuration           Int?
+  fullContentExtracted    Boolean                 @default(false)
+  extractionAttempts      Int                     @default(0)
+  extractionError         String?
+  extractionMethod        String? // 'readability' | 'gemini' | 'manual'
+  lastExtractionAt        DateTime?
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  source                  NewsSource              @relation(fields: [sourceId], references: [id])
+  sentenceModels          Sentence[]
+  userProgress            UserProgress[]
+  userArticleProgress     UserArticleProgress[]
 
   @@index([publishedAt])
   @@index([category])
   @@index([isProcessed])
   @@index([difficulty])
+  @@index([fullContentExtracted])
 }
 
 model Sentence {

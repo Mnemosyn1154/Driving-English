@@ -258,7 +258,7 @@ export class TextToSpeechService implements ITTSService {
    * Get voice configuration
    */
   private getVoiceConfig(language: string, voiceName?: string) {
-    if (language === 'ko') {
+    if (language === 'ko' || language === 'ko-KR') {
       return {
         languageCode: 'ko-KR',
         name: voiceName || 'ko-KR-WaveNet-A', // WaveNet Female voice (고품질)
@@ -267,7 +267,7 @@ export class TextToSpeechService implements ITTSService {
     } else {
       return {
         languageCode: 'en-US',
-        name: voiceName || 'en-US-WaveNet-F', // WaveNet Female voice (고품질)
+        name: voiceName || 'en-US-Studio-O', // Studio voice - 최고 품질 음성
         ssmlGender: 'FEMALE' as SsmlVoiceGender,
       };
     }

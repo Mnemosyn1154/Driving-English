@@ -24,6 +24,7 @@ export enum JobType {
   PROCESS_ARTICLE = 'process-article',
   CLEANUP_CACHE = 'cleanup-cache',
   AGGREGATE_NEWS = 'aggregate-news',
+  EXTRACT_ARTICLE = 'extract-article',
 }
 
 // Create queues (use in-memory for development if Redis not available)
@@ -34,6 +35,10 @@ export const newsQueue = useRedis
 export const processingQueue = useRedis
   ? new Bull('processing-queue', redisConfig)
   : createInMemoryQueue('processing-queue');
+
+export const extractionQueue = useRedis
+  ? new Bull('extraction-queue', redisConfig)
+  : createInMemoryQueue('extraction-queue');
 
 if (!useRedis) {
   console.warn('⚠️  Redis not configured - using in-memory queue (development only)');
@@ -59,8 +64,21 @@ export const CRON_EXPRESSIONS = {
   TWICE_DAILY: '0 0,12 * * *',
 };
 
+// Extraction job options with higher timeout for AI processing
+export const extractionJobOptions: Bull.JobOptions = {
+  attempts: 2, // Fewer attempts due to AI cost
+  backoff: {
+    type: 'exponential',
+    delay: 10000, // 10 seconds
+  },
+  removeOnComplete: 50, // Keep fewer completed jobs
+  removeOnFail: 25, // Keep fewer failed jobs
+  timeout: 300000, // 5 minutes timeout for AI processing
+};
+
 // Export all queues
 export const queues = {
   news: newsQueue,
   processing: processingQueue,
+  extraction: extractionQueue,
 };

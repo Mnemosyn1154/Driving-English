@@ -66,7 +66,7 @@ export default function ArticlePage() {
   };
 
   const handleNext = () => {
-    if (article && currentSentence < article.sentences.length - 1) {
+    if (article?.sentences && currentSentence < article.sentences.length - 1) {
       setCurrentSentence(prev => prev + 1);
     }
   };
@@ -94,8 +94,21 @@ export default function ArticlePage() {
     );
   }
 
-  const sentence = article.sentences[currentSentence];
-  const progress = ((currentSentence + 1) / article.sentences.length) * 100;
+  const sentence = article.sentences?.[currentSentence];
+  const progress = article.sentences?.length > 0 
+    ? ((currentSentence + 1) / article.sentences.length) * 100 
+    : 0;
+    
+  // If no sentences or invalid sentence index, show error
+  if (!sentence || !article.sentences || article.sentences.length === 0) {
+    return (
+      <div className={styles.error}>
+        <h2>문장을 찾을 수 없습니다</h2>
+        <p>이 기사에는 표시할 문장이 없습니다.</p>
+        <Link href="/" className={styles.backButton}>홈으로 돌아가기</Link>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
